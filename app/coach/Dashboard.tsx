@@ -274,33 +274,24 @@ function BoardView({
               key={t.id}
               onClick={() => onOpenTask(t)}
               style={{ ["--i" as string]: i }}
-              className={`reveal group relative flex min-h-[130px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lift ${
+              className={`reveal group relative flex min-h-[140px] flex-col items-center overflow-hidden rounded-2xl border p-4 text-center transition hover:-translate-y-1 hover:shadow-lift ${
                 complete
                   ? "tile-done border-transparent text-white shadow-lift"
                   : "tile border-line shadow-card hover:border-accent"
               }`}
             >
-              {t.category && (
-                <span
-                  className={`font-race text-lg uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
-                    complete ? "text-white" : "text-accent"
-                  }`}
-                >
-                  {t.category}
-                </span>
-              )}
               <span
-                className={`mt-1.5 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${
-                  complete ? "text-white/90" : "text-ink/75"
+                className={`font-race mt-1 text-2xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
+                  complete ? "text-white" : "text-accent"
                 }`}
               >
-                {softBreak(t.title)}
+                {t.category || softBreak(t.title)}
               </span>
-              <div className="mt-auto pt-3">
+              <div className="mt-auto w-full pt-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="font-display text-2xl font-extrabold tabular-nums">
+                  <span className="font-display text-3xl font-extrabold tabular-nums">
                     {done}
-                    <span className={complete ? "text-base text-white/70" : "text-base text-muted"}>
+                    <span className={complete ? "text-lg text-white/70" : "text-lg text-muted"}>
                       /{athleteCount}
                     </span>
                   </span>
