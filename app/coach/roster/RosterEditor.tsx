@@ -179,7 +179,9 @@ function RosterRow({
   onRequestDelete,
 }: {
   athlete: Athlete;
-  onCall: (body: Record<string, unknown>) => Promise<void>;
+  onCall: (
+    body: Record<string, unknown>,
+  ) => Promise<{ ok: boolean; json: Record<string, unknown> }>;
   busy: boolean;
   onRequestDelete: () => void;
 }) {
