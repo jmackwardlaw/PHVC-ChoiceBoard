@@ -270,20 +270,21 @@ function NamePicker({
       className="flex min-h-screen flex-col"
       style={{ ["--accent" as string]: board.accent_color }}
     >
-      <div className="accent-header flex flex-col items-center px-6 pb-10 pt-12 text-center text-white shadow-sm">
-        <Logo variant="badge" size={64} className="mb-3" />
-        <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
-          {board.subtitle || "Choice Board"}
-        </p>
-        <h1 className="font-race mt-1 text-5xl uppercase sm:text-6xl">
-          {board.title}
-        </h1>
+      <div className="accent-header flex flex-col items-center px-6 pb-10 pt-8 text-center text-white shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/taking-it-back-white.svg"
-          alt="Taking It Back"
-          className="mt-5 w-56 max-w-[70%] opacity-95 sm:w-64"
+          alt="Palmetto — Taking It Back"
+          className="w-80 max-w-[85%] sm:w-[26rem]"
         />
+        {board.subtitle && (
+          <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/85">
+            {board.subtitle}
+          </p>
+        )}
+        <h1 className="font-race mt-1 text-5xl uppercase sm:text-6xl">
+          {board.title}
+        </h1>
       </div>
 
       <div className="relative z-10 mx-auto -mt-6 w-full max-w-md flex-1 px-5">
