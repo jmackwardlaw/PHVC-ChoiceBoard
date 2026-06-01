@@ -278,6 +278,12 @@ function NamePicker({
         <h1 className="font-race mt-1 text-5xl uppercase sm:text-6xl">
           {board.title}
         </h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/taking-it-back-white.svg"
+          alt="Taking It Back"
+          className="mt-5 w-56 max-w-[70%] opacity-95 sm:w-64"
+        />
       </div>
 
       <div className="mx-auto -mt-6 w-full max-w-md flex-1 px-5">

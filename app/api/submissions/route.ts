@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   // Reject uploads once a board's deadline has passed.
   const { data: board } = await supabase
     .from("boards")
-    .select("due_date")
+    .select("due_date, require_approval")
     .eq("id", boardId)
     .maybeSingle();
   if (board?.due_date && isPastDue(board.due_date as string)) {
@@ -63,6 +63,9 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+
+  // When the board skips coach approval, auto-accept the upload on submit.
+  const status = board?.require_approval === false ? "approved" : "submitted";
 
   const { data, error } = await supabase
     .from("submissions")
@@ -73,6 +76,7 @@ export async function POST(request: Request) {
       file_path: filePath,
       file_type: fileType,
       note: (body.note ?? "").slice(0, 500),
+      status,
     })
     .select()
     .single();

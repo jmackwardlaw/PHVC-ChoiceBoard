@@ -27,6 +27,7 @@ export default function BoardEditor({
   const [columns, setColumns] = useState(board?.columns ?? 4);
   const [dueDate, setDueDate] = useState(board?.due_date ?? "");
   const [showLeaderboard, setShowLeaderboard] = useState(board?.show_leaderboard ?? false);
+  const [requireApproval, setRequireApproval] = useState(board?.require_approval ?? true);
   const [tiles, setTiles] = useState<Tile[]>(
     tasks.map((t) => ({ id: t.id, title: t.title, category: t.category })),
   );
@@ -86,6 +87,7 @@ export default function BoardEditor({
         columns,
         due_date: dueDate || null,
         show_leaderboard: showLeaderboard,
+        require_approval: requireApproval,
         tiles,
       }),
     });
@@ -275,6 +277,24 @@ export default function BoardEditor({
                   Show the leaderboard to athletes
                 </span>
               </label>
+            </Field>
+            <Field label="Submission approval">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={requireApproval}
+                  onChange={(e) => setRequireApproval(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm font-medium">
+                  I review and approve each upload
+                </span>
+              </label>
+              <p className="mt-1 text-xs text-muted">
+                {requireApproval
+                  ? "Uploads wait for your approval (or a redo). They show in “Needs review.”"
+                  : "Uploads are auto-accepted the moment an athlete submits — no review needed."}
+              </p>
             </Field>
           </div>
         </section>

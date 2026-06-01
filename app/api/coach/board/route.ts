@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         columns: clampColumns(Number(body.columns)),
         due_date: normalizeDate(body.due_date),
         show_leaderboard: Boolean(body.show_leaderboard),
+        require_approval: Boolean(body.require_approval),
       })
       .eq("id", boardId);
 
@@ -81,17 +82,19 @@ export async function POST(request: Request) {
     let accent = "#e20706";
     let columns = 4;
     let showLeaderboard = false;
+    let requireApproval = true;
     let tiles: Tile[] = [];
     if (fromBoardId) {
       const { data: src } = await supabase
         .from("boards")
-        .select("accent_color, columns, show_leaderboard")
+        .select("accent_color, columns, show_leaderboard, require_approval")
         .eq("id", fromBoardId)
         .maybeSingle();
       if (src) {
         accent = src.accent_color as string;
         columns = src.columns as number;
         showLeaderboard = Boolean(src.show_leaderboard);
+        requireApproval = src.require_approval !== false;
       }
       const { data: srcTasks } = await supabase
         .from("tasks")
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
         accent_color: accent,
         columns,
         show_leaderboard: showLeaderboard,
+        require_approval: requireApproval,
         is_active: true,
       })
       .select()

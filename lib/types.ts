@@ -7,6 +7,7 @@ export type Board = {
   is_active: boolean;
   due_date: string | null;
   show_leaderboard: boolean;
+  require_approval: boolean;
   created_at: string;
   archived_at: string | null;
 };

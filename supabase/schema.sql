@@ -17,6 +17,7 @@ create table if not exists boards (
   is_active    boolean not null default false,
   due_date         date,                              -- optional deadline; board locks after this day
   show_leaderboard boolean not null default false,    -- show the team leaderboard to athletes
+  require_approval boolean not null default true,     -- coach approves uploads (vs. auto-accept on submit)
   created_at   timestamptz not null default now(),
   archived_at  timestamptz
 );
@@ -24,6 +25,7 @@ create table if not exists boards (
 -- Columns added after the first release; safe to run on an existing database.
 alter table boards add column if not exists due_date date;
 alter table boards add column if not exists show_leaderboard boolean not null default false;
+alter table boards add column if not exists require_approval boolean not null default true;
 
 -- Tiles on a board. "position" orders them left-to-right, top-to-bottom.
 create table if not exists tasks (
