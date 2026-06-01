@@ -23,7 +23,7 @@ export default async function CoachLogin({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+      <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
         <div className="accent-header flex flex-col items-center px-8 pt-9 pb-7 text-center text-white">
           <Logo variant="badge" size={64} />
           <p className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-white/80">

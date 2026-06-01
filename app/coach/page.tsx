@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireCoach } from "@/lib/coach";
 import {
-  getActiveBoard,
+  getAllBoards,
   getAthletes,
   getSubmissionsForBoard,
   getTasks,
@@ -11,9 +11,18 @@ import Dashboard from "./Dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function CoachHome() {
+export default async function CoachHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ board?: string }>;
+}) {
   const coach = await requireCoach();
-  const board = await getActiveBoard();
+  const { board: boardParam } = await searchParams;
+
+  const allBoards = await getAllBoards();
+  const active = allBoards.find((b) => b.is_active) ?? null;
+  const board =
+    (boardParam && allBoards.find((b) => b.id === boardParam)) || active;
 
   if (!board) {
     return (
@@ -32,16 +41,22 @@ export default async function CoachHome() {
     );
   }
 
-  const [tasks, athletes, submissions] = await Promise.all([
+  const [tasks, allAthletes, submissions] = await Promise.all([
     getTasks(board.id),
-    getAthletes(true),
+    getAthletes(false),
     getSubmissionsForBoard(board.id),
   ]);
+
+  // Show the current roster plus anyone who participated on this board, so
+  // history stays complete even after an athlete is deactivated.
+  const participated = new Set(submissions.map((s) => s.athlete_id));
+  const athletes = allAthletes.filter((a) => a.active || participated.has(a.id));
 
   return (
     <CoachShell email={coach.email}>
       <Dashboard
         board={board}
+        allBoards={allBoards}
         tasks={tasks}
         athletes={athletes}
         submissions={submissions}

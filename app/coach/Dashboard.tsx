@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 
 type Cell = { athlete: Athlete; task: Task; sub: Submission };
@@ -12,15 +13,18 @@ const counts = (s: Submission | undefined) => !!s && s.status !== "redo";
 
 export default function Dashboard({
   board,
+  allBoards,
   tasks,
   athletes,
   submissions,
 }: {
   board: Board;
+  allBoards: Board[];
   tasks: Task[];
   athletes: Athlete[];
   submissions: Submission[];
 }) {
+  const router = useRouter();
   const [view, setView] = useState<View>("board");
   const [viewing, setViewing] = useState<Cell | null>(null);
   const [openAthlete, setOpenAthlete] = useState<Athlete | null>(null);
@@ -72,15 +76,46 @@ export default function Dashboard({
       {/* Title + deadline */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-            {board.subtitle || "Active board"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+              {board.subtitle || (board.is_active ? "Active board" : "Past board")}
+            </p>
+            {!board.is_active && (
+              <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted">
+                Archived
+              </span>
+            )}
+          </div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
             {board.title}
           </h1>
         </div>
-        {board.due_date && <DeadlineChip dueDate={board.due_date} daysLeft={daysLeft} />}
+        <div className="flex flex-wrap items-center gap-2">
+          {board.due_date && <DeadlineChip dueDate={board.due_date} daysLeft={daysLeft} />}
+          {allBoards.length > 1 && (
+            <BoardSwitcher
+              board={board}
+              allBoards={allBoards}
+              onPick={(id) => router.push(`/coach?board=${id}`)}
+            />
+          )}
+        </div>
       </div>
+
+      {!board.is_active && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-canvas px-4 py-3">
+          <p className="text-sm text-muted">
+            You&apos;re viewing a past board. This is read-only history — athletes
+            see the active board.
+          </p>
+          <Link
+            href="/coach"
+            className="shrink-0 text-sm font-semibold text-accent hover:underline"
+          >
+            Back to active board →
+          </Link>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -538,6 +573,123 @@ function AthleteDetailModal({
   );
 }
 
+/* ───────────────────────── Board switcher ───────────────────────── */
+
+function BoardSwitcher({
+  board,
+  allBoards,
+  onPick,
+}: {
+  board: Board;
+  allBoards: Board[];
+  onPick: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const active = allBoards.filter((b) => b.is_active);
+  const past = allBoards.filter((b) => !b.is_active);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-semibold shadow-sm hover:border-ink/30"
+      >
+        <span className="text-muted">Viewing</span>
+        <span className="max-w-[10rem] truncate">{board.title}</span>
+        <span className={`text-muted transition ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-72 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+          {active.length > 0 && (
+            <BoardGroup label="Active">
+              {active.map((b) => (
+                <BoardOption
+                  key={b.id}
+                  b={b}
+                  current={b.id === board.id}
+                  onPick={() => {
+                    setOpen(false);
+                    onPick(b.id);
+                  }}
+                />
+              ))}
+            </BoardGroup>
+          )}
+          {past.length > 0 && (
+            <BoardGroup label="Past boards">
+              {past.map((b) => (
+                <BoardOption
+                  key={b.id}
+                  b={b}
+                  current={b.id === board.id}
+                  onPick={() => {
+                    setOpen(false);
+                    onPick(b.id);
+                  }}
+                />
+              ))}
+            </BoardGroup>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoardGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-line last:border-0">
+      <p className="px-4 pt-2.5 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+        {label}
+      </p>
+      <div className="pb-1.5">{children}</div>
+    </div>
+  );
+}
+
+function BoardOption({
+  b,
+  current,
+  onPick,
+}: {
+  b: Board;
+  current: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      onClick={onPick}
+      className={`flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-canvas ${
+        current ? "bg-canvas" : ""
+      }`}
+    >
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: b.accent_color }}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold">{b.title}</span>
+        {b.subtitle && (
+          <span className="block truncate text-xs text-muted">{b.subtitle}</span>
+        )}
+      </span>
+      {current && <span className="shrink-0 text-accent">✓</span>}
+    </button>
+  );
+}
+
 /* ───────────────────────── Shared bits ───────────────────────── */
 
 function Stat({
@@ -553,7 +705,7 @@ function Stat({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-4 ${
+      className={`rounded-2xl border p-4 shadow-card ${
         accent
           ? "border-transparent bg-accent text-white"
           : highlight
