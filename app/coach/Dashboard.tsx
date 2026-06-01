@@ -116,7 +116,7 @@ export default function Dashboard({
               </span>
             )}
           </div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="font-race text-4xl uppercase sm:text-5xl">
             {board.title}
           </h1>
         </div>
@@ -273,28 +273,45 @@ function BoardView({
             <button
               key={t.id}
               onClick={() => onOpenTask(t)}
-              className={`flex min-h-[120px] flex-col rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
-                complete ? "border-accent bg-accent/5" : "border-line bg-surface"
+              className={`group relative flex min-h-[130px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lift ${
+                complete
+                  ? "tile-done border-transparent text-white shadow-lift"
+                  : "tile border-line shadow-card hover:border-accent"
               }`}
             >
               {t.category && (
-                <span className="truncate text-[11px] font-bold uppercase tracking-wide text-accent">
+                <span
+                  className={`font-race text-lg uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
+                    complete ? "text-white" : "text-accent"
+                  }`}
+                >
                   {t.category}
                 </span>
               )}
-              <span className="mt-1 text-sm font-bold leading-tight [overflow-wrap:anywhere]">
+              <span
+                className={`mt-1.5 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${
+                  complete ? "text-white/90" : "text-ink/75"
+                }`}
+              >
                 {softBreak(t.title)}
               </span>
               <div className="mt-auto pt-3">
                 <div className="flex items-baseline justify-between">
                   <span className="font-display text-2xl font-extrabold tabular-nums">
                     {done}
-                    <span className="text-base text-muted">/{athleteCount}</span>
+                    <span className={complete ? "text-base text-white/70" : "text-base text-muted"}>
+                      /{athleteCount}
+                    </span>
                   </span>
-                  <span className="text-xs font-semibold text-muted">{pct}%</span>
+                  <span className={`text-xs font-semibold ${complete ? "text-white/80" : "text-muted"}`}>
+                    {pct}%
+                  </span>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-canvas">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                <div className={`mt-1.5 h-2 overflow-hidden rounded-full ${complete ? "bg-white/25" : "bg-canvas"}`}>
+                  <div
+                    className={`h-full rounded-full ${complete ? "bg-white" : "bg-accent"}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
             </button>

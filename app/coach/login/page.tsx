@@ -29,7 +29,7 @@ export default async function CoachLogin({
           <p className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
             Palmetto Athletics
           </p>
-          <h1 className="font-display mt-1 text-3xl font-extrabold uppercase tracking-tight">
+          <h1 className="font-race mt-1 text-4xl uppercase">
             Coach Login
           </h1>
         </div>

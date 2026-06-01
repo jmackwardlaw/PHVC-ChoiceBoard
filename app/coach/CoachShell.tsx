@@ -13,9 +13,12 @@ export default function CoachShell({
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
           <span className="flex items-center gap-2.5">
-            <Logo size={34} />
-            <span className="font-display text-xl font-extrabold uppercase tracking-tight">
-              PHVC<span className="font-semibold text-muted"> Coach</span>
+            <Logo size={40} className="shrink-0" />
+            <span className="font-race text-2xl uppercase leading-none">
+              PHVC{" "}
+              <span className="font-display align-middle text-base font-semibold lowercase tracking-tight text-muted">
+                coach
+              </span>
             </span>
           </span>
           <CoachNav />

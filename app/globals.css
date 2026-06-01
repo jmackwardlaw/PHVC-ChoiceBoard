@@ -37,11 +37,60 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Brand racing face — sporty wordmarks + big titles. */
+.font-race {
+  font-family: var(--font-race), var(--font-display), "Arial Black", sans-serif;
+  letter-spacing: 0.01em;
+}
+
 /* Soft, layered card shadow — warmer and less generic than a flat border. */
 .shadow-card {
   box-shadow:
     0 1px 2px rgba(15, 23, 38, 0.04),
     0 8px 24px -12px rgba(15, 23, 38, 0.12);
+}
+
+/* Stronger lift for interactive tiles / completed states. */
+.shadow-lift {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 38, 0.06),
+    0 18px 40px -16px rgba(15, 23, 38, 0.28);
+}
+
+/* Choice-board tiles: subtle depth gradient + a colored category rail. */
+.tile {
+  position: relative;
+  background-image: linear-gradient(165deg, #ffffff 0%, #eef1f5 100%);
+}
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  border-radius: 1rem 0 0 1rem;
+  background: linear-gradient(
+    180deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 70%, black)
+  );
+  opacity: 0.9;
+}
+/* Completed tile: rich same-hue accent gradient + pinstripe texture. */
+.tile-done {
+  background-color: var(--accent);
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 2px,
+      transparent 2px,
+      transparent 11px
+    ),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--accent) 98%, white),
+      color-mix(in srgb, var(--accent) 70%, black)
+    );
 }
 
 /* Make every button feel responsive: pointer cursor + a quick press effect. */

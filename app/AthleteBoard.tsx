@@ -145,27 +145,35 @@ export default function AthleteBoard({
                     key={task.id}
                     onClick={() => tappable && setActiveTask(task)}
                     disabled={!tappable}
-                    className={`group relative flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition active:scale-[0.98] disabled:cursor-default ${
+                    className={`group relative flex min-h-[150px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition active:scale-[0.98] disabled:cursor-default ${
                       redo
-                        ? "border-red-300 bg-red-50"
+                        ? "border-red-300 bg-red-50 shadow-card"
                         : done
-                          ? "border-transparent bg-accent text-white shadow-sm"
-                          : "border-line bg-surface hover:border-accent hover:shadow-sm"
+                          ? "tile-done border-transparent text-white shadow-lift"
+                          : "tile border-line shadow-card hover:-translate-y-1 hover:border-accent hover:shadow-lift"
                     }`}
                   >
                     {task.category && (
                       <span
-                        className={`truncate text-[11px] font-bold uppercase tracking-wide ${
-                          done ? "text-white/80" : redo ? "text-red-600" : "text-accent"
+                        className={`font-race text-xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
+                          done ? "text-white" : redo ? "text-red-600" : "text-accent"
                         }`}
                       >
                         {task.category}
                       </span>
                     )}
-                    <span className="mt-1 text-base font-bold leading-tight [overflow-wrap:anywhere]">
+                    <span
+                      className={`mt-2 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${
+                        done ? "text-white/90" : redo ? "text-red-700" : "text-ink/75"
+                      }`}
+                    >
                       {softBreak(task.title)}
                     </span>
-                    <span className="mt-auto pt-3 text-sm font-medium">
+                    <span
+                      className={`mt-auto pt-3 text-sm font-semibold ${
+                        done ? "text-white/90" : ""
+                      }`}
+                    >
                       {redo ? (
                         <span className="font-semibold text-red-600">
                           ↻ Coach asked for a redo — tap to re-upload
@@ -266,7 +274,7 @@ function NamePicker({
         <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
           {board.subtitle || "Choice Board"}
         </p>
-        <h1 className="font-display mt-1 text-4xl font-extrabold sm:text-5xl">
+        <h1 className="font-race mt-1 text-5xl uppercase sm:text-6xl">
           {board.title}
         </h1>
       </div>
@@ -362,7 +370,7 @@ function Header({
           <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
             {board.subtitle || "Choice Board"}
           </p>
-          <h1 className="font-display truncate text-2xl font-extrabold sm:text-3xl">
+          <h1 className="font-race truncate text-3xl uppercase sm:text-4xl">
             {board.title}
           </h1>
         </div>

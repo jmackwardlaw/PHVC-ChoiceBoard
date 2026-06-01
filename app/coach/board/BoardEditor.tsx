@@ -398,7 +398,7 @@ export default function BoardEditor({
             <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
               {subtitle || "Choice Board"}
             </p>
-            <h3 className="font-display text-2xl font-extrabold">{title}</h3>
+            <h3 className="font-race text-3xl uppercase">{title}</h3>
           </div>
           <div
             className="board-grid gap-2 bg-canvas p-3"
@@ -407,12 +407,16 @@ export default function BoardEditor({
             {tiles.map((t, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-line bg-surface p-2.5"
+                className="tile overflow-hidden rounded-xl border border-line p-2.5 shadow-card"
               >
                 {t.category && (
-                  <p className="truncate text-[9px] font-bold uppercase text-accent">{t.category}</p>
+                  <p className="font-race text-sm uppercase leading-none tracking-wide text-accent [overflow-wrap:anywhere]">
+                    {t.category}
+                  </p>
                 )}
-                <p className="text-xs font-bold leading-tight [overflow-wrap:anywhere]">{softBreak(t.title)}</p>
+                <p className="mt-1 text-xs font-bold leading-tight text-ink/75 [overflow-wrap:anywhere]">
+                  {softBreak(t.title)}
+                </p>
               </div>
             ))}
           </div>
