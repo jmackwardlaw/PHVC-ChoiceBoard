@@ -32,6 +32,17 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Make every button feel responsive: pointer cursor + a quick press effect. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+button {
+  transition: transform 0.06s ease, opacity 0.15s ease, background-color 0.15s ease;
+}
+
 /* Accent-driven helpers so a board's color flows everywhere. */
 .bg-accent {
   background-color: var(--accent);

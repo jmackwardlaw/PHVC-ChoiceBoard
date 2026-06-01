@@ -35,6 +35,7 @@ export default function BoardEditor({
   const [newTitle, setNewTitle] = useState("");
   const [newSub, setNewSub] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   // Activate-confirm pop-up card
   const [toActivate, setToActivate] = useState<Board | null>(null);
@@ -87,27 +88,36 @@ export default function BoardEditor({
   function openNewBoard() {
     setNewTitle(board ? title : "Conditioning Board");
     setNewSub("");
+    setCreateError("");
     setShowNew(true);
   }
 
   async function createBoard() {
     if (newTitle.trim().length < 2) return;
     setCreating(true);
-    const res = await fetch("/api/coach/board", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "clone-new",
-        fromBoardId: board?.id,
-        title: newTitle.trim(),
-        subtitle: newSub.trim(),
-      }),
-    });
-    setCreating(false);
-    if (res.ok) {
-      // Full reload so the editor re-reads the brand-new active board.
-      window.location.reload();
+    setCreateError("");
+    try {
+      const res = await fetch("/api/coach/board", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "clone-new",
+          fromBoardId: board?.id,
+          title: newTitle.trim(),
+          subtitle: newSub.trim(),
+        }),
+      });
+      if (res.ok) {
+        // Full reload so the editor re-reads the brand-new active board.
+        window.location.reload();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setCreateError(data.error ?? `Server error (${res.status}).`);
+    } catch {
+      setCreateError("Network error — check your connection and try again.");
     }
+    setCreating(false);
   }
 
   async function confirmActivate() {
@@ -138,6 +148,7 @@ export default function BoardEditor({
             title={newTitle}
             subtitle={newSub}
             creating={creating}
+            error={createError}
             onTitle={setNewTitle}
             onSubtitle={setNewSub}
             onCreate={createBoard}
@@ -339,6 +350,7 @@ export default function BoardEditor({
           title={newTitle}
           subtitle={newSub}
           creating={creating}
+          error={createError}
           onTitle={setNewTitle}
           onSubtitle={setNewSub}
           onCreate={createBoard}
@@ -382,6 +394,7 @@ function NewBoardModal({
   subtitle,
   creating,
   cloning,
+  error,
   onTitle,
   onSubtitle,
   onCreate,
@@ -391,6 +404,7 @@ function NewBoardModal({
   subtitle: string;
   creating: boolean;
   cloning: boolean;
+  error?: string;
   onTitle: (v: string) => void;
   onSubtitle: (v: string) => void;
   onCreate: () => void;
@@ -426,6 +440,11 @@ function NewBoardModal({
           className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 outline-none focus:border-ink"
         />
       </label>
+      {error && (
+        <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          {error}
+        </p>
+      )}
       <div className="mt-5 flex justify-end gap-2">
         <button
           onClick={onClose}
@@ -436,7 +455,7 @@ function NewBoardModal({
         <button
           onClick={onCreate}
           disabled={creating || title.trim().length < 2}
-          className="rounded-full bg-ink px-5 py-2 font-semibold text-white disabled:opacity-50"
+          className="rounded-full bg-ink px-5 py-2 font-semibold text-white transition active:scale-95 disabled:opacity-50"
         >
           {creating ? "Creating…" : "Create board"}
         </button>

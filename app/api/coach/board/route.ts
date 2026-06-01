@@ -116,7 +116,10 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !newBoard) {
-      return NextResponse.json({ error: "Could not create board." }, { status: 500 });
+      return NextResponse.json(
+        { error: error?.message ?? "Could not create board." },
+        { status: 500 },
+      );
     }
 
     if (tiles.length) {
