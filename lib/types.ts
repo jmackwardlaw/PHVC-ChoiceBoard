@@ -33,7 +33,7 @@ export type Submission = {
   task_id: string;
   athlete_id: string;
   file_path: string;
-  file_type: "image" | "video";
+  file_type: "image" | "video" | "manual";
   note: string;
   status: "submitted" | "approved" | "redo";
   created_at: string;

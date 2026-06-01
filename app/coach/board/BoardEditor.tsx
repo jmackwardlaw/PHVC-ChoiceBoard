@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Board, Task } from "@/lib/types";
 import Modal from "../Modal";
+import { softBreak } from "../../softBreak";
 
 type Tile = { id?: string; title: string; category: string };
 
@@ -411,7 +412,7 @@ export default function BoardEditor({
                 {t.category && (
                   <p className="truncate text-[9px] font-bold uppercase text-accent">{t.category}</p>
                 )}
-                <p className="text-xs font-bold leading-tight [overflow-wrap:anywhere]">{t.title}</p>
+                <p className="text-xs font-bold leading-tight [overflow-wrap:anywhere]">{softBreak(t.title)}</p>
               </div>
             ))}
           </div>

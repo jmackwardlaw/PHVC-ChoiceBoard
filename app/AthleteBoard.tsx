@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 import Logo from "./Logo";
+import { softBreak } from "./softBreak";
 
 const STORAGE_KEY = "phvc-athlete";
 
@@ -161,8 +162,8 @@ export default function AthleteBoard({
                         {task.category}
                       </span>
                     )}
-                    <span className="mt-1 text-base font-bold leading-tight [overflow-wrap:anywhere] hyphens-auto">
-                      {task.title}
+                    <span className="mt-1 text-base font-bold leading-tight [overflow-wrap:anywhere]">
+                      {softBreak(task.title)}
                     </span>
                     <span className="mt-auto pt-3 text-sm font-medium">
                       {redo ? (

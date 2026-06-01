@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
+import { softBreak } from "../softBreak";
 
 type Cell = { athlete: Athlete; task: Task; sub: Submission };
 type View = "board" | "athletes" | "leaderboard";
@@ -64,6 +65,35 @@ export default function Dashboard({
   }, [tasks, athletes, byKey]);
 
   const daysLeft = useMemo(() => daysUntil(board.due_date), [board.due_date]);
+
+  const [marking, setMarking] = useState<string | null>(null);
+
+  async function markComplete(taskId: string, athleteId: string) {
+    setMarking(`${athleteId}:${taskId}`);
+    await fetch("/api/coach/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "mark-complete",
+        boardId: board.id,
+        taskId,
+        athleteId,
+      }),
+    });
+    setMarking(null);
+    router.refresh();
+  }
+
+  async function unmark(submissionId: string) {
+    setMarking(submissionId);
+    await fetch("/api/coach/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unmark", submissionId }),
+    });
+    setMarking(null);
+    router.refresh();
+  }
 
   const total = tasks.length;
   const finishedAll = rows.filter((r) => r.done === total && total > 0);
@@ -180,6 +210,8 @@ export default function Dashboard({
           task={openTask}
           athletes={athletes}
           byKey={byKey}
+          marking={marking}
+          onMarkComplete={markComplete}
           onClose={() => setOpenTask(null)}
           onView={setViewing}
         />
@@ -190,12 +222,20 @@ export default function Dashboard({
           athlete={openAthlete}
           tasks={tasks}
           byKey={byKey}
+          marking={marking}
+          onMarkComplete={markComplete}
           onClose={() => setOpenAthlete(null)}
           onView={setViewing}
         />
       )}
 
-      {viewing && <ArtifactModal cell={viewing} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <ArtifactModal
+          cell={viewing}
+          onUnmark={unmark}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -243,7 +283,7 @@ function BoardView({
                 </span>
               )}
               <span className="mt-1 text-sm font-bold leading-tight [overflow-wrap:anywhere]">
-                {t.title}
+                {softBreak(t.title)}
               </span>
               <div className="mt-auto pt-3">
                 <div className="flex items-baseline justify-between">
@@ -448,12 +488,16 @@ function TaskDetailModal({
   task,
   athletes,
   byKey,
+  marking,
+  onMarkComplete,
   onClose,
   onView,
 }: {
   task: Task;
   athletes: Athlete[];
   byKey: Map<string, Submission>;
+  marking: string | null;
+  onMarkComplete: (taskId: string, athleteId: string) => void;
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
@@ -495,13 +539,26 @@ function TaskDetailModal({
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">
             Not done ({missing.length})
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {missing.map((a) => (
-              <span key={a.id} className="rounded-full border border-line px-2.5 py-1 text-xs text-muted">
-                {a.name}
-              </span>
-            ))}
-          </div>
+          <ul className="space-y-1">
+            {missing.map((a) => {
+              const key = `${a.id}:${task.id}`;
+              return (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-canvas"
+                >
+                  <span className="text-sm font-medium text-muted">{a.name}</span>
+                  <button
+                    onClick={() => onMarkComplete(task.id, a.id)}
+                    disabled={marking === key}
+                    className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
+                  >
+                    {marking === key ? "…" : "Mark done"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </Sheet>
@@ -514,12 +571,16 @@ function AthleteDetailModal({
   athlete,
   tasks,
   byKey,
+  marking,
+  onMarkComplete,
   onClose,
   onView,
 }: {
   athlete: Athlete;
   tasks: Task[];
   byKey: Map<string, Submission>;
+  marking: string | null;
+  onMarkComplete: (taskId: string, athleteId: string) => void;
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
@@ -550,7 +611,9 @@ function AthleteDetailModal({
                     {t.category}
                   </p>
                 )}
-                <p className="text-sm font-semibold [overflow-wrap:anywhere]">{t.title}</p>
+                <p className="text-sm font-semibold [overflow-wrap:anywhere]">
+                  {softBreak(t.title)}
+                </p>
               </div>
               {sub ? (
                 <button
@@ -563,7 +626,13 @@ function AthleteDetailModal({
                   <span className="text-accent">View →</span>
                 </button>
               ) : (
-                <span className="shrink-0 text-xs font-semibold text-muted">Not started</span>
+                <button
+                  onClick={() => onMarkComplete(t.id, athlete.id)}
+                  disabled={marking === `${athlete.id}:${t.id}`}
+                  className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
+                >
+                  {marking === `${athlete.id}:${t.id}` ? "…" : "Mark done"}
+                </button>
               )}
             </li>
           );
@@ -764,19 +833,29 @@ function Sheet({
   );
 }
 
-function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
+function ArtifactModal({
+  cell,
+  onUnmark,
+  onClose,
+}: {
+  cell: Cell;
+  onUnmark: (id: string) => void;
+  onClose: () => void;
+}) {
   const router = useRouter();
+  const manual = cell.sub.file_type === "manual";
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState(cell.sub.status);
   const [saving, setSaving] = useState<"approved" | "redo" | null>(null);
 
   useEffect(() => {
+    if (manual) return;
     fetch(`/api/artifact?path=${encodeURIComponent(cell.sub.file_path)}`)
       .then((r) => r.json())
       .then((j) => (j.url ? setUrl(j.url) : setError(j.error ?? "Could not load.")))
       .catch(() => setError("Could not load."));
-  }, [cell]);
+  }, [cell, manual]);
 
   async function setReview(next: "approved" | "redo") {
     setSaving(next);
@@ -817,54 +896,82 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/5">
-          {error ? (
-            <p className="p-6 text-sm text-red-600">{error}</p>
-          ) : !url ? (
-            <p className="p-6 text-sm text-muted">Loading…</p>
-          ) : cell.sub.file_type === "video" ? (
-            <video src={url} controls className="max-h-[60vh] w-full" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt={cell.task.title} className="max-h-[60vh] w-full object-contain" />
-          )}
-        </div>
+        {manual ? (
+          <>
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-canvas p-6 text-center">
+              <span className="text-3xl">✅</span>
+              <p className="font-semibold">Marked complete by coach</p>
+              <p className="text-sm text-muted">
+                No photo or video — checked off manually.
+              </p>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white">
+                Complete
+              </span>
+              <button
+                onClick={() => {
+                  onUnmark(cell.sub.id);
+                  onClose();
+                }}
+                className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+              >
+                Undo · mark not done
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/5">
+              {error ? (
+                <p className="p-6 text-sm text-red-600">{error}</p>
+              ) : !url ? (
+                <p className="p-6 text-sm text-muted">Loading…</p>
+              ) : cell.sub.file_type === "video" ? (
+                <video src={url} controls className="max-h-[60vh] w-full" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={url} alt={cell.task.title} className="max-h-[60vh] w-full object-contain" />
+              )}
+            </div>
 
-        {cell.sub.note && (
-          <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">“{cell.sub.note}”</p>
-        )}
+            {cell.sub.note && (
+              <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">“{cell.sub.note}”</p>
+            )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-bold text-white ${statusBg(status)}`}>
-            {statusLabel(status)}
-          </span>
-          <div className="ml-auto flex gap-2">
-            <button
-              onClick={() => setReview("redo")}
-              disabled={saving !== null}
-              className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              {saving === "redo" ? "…" : "Needs redo ↻"}
-            </button>
-            <button
-              onClick={() => setReview("approved")}
-              disabled={saving !== null}
-              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {saving === "approved" ? "…" : "Approve ★"}
-            </button>
-          </div>
-        </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold text-white ${statusBg(status)}`}>
+                {statusLabel(status)}
+              </span>
+              <div className="ml-auto flex gap-2">
+                <button
+                  onClick={() => setReview("redo")}
+                  disabled={saving !== null}
+                  className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {saving === "redo" ? "…" : "Needs redo ↻"}
+                </button>
+                <button
+                  onClick={() => setReview("approved")}
+                  disabled={saving !== null}
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {saving === "approved" ? "…" : "Approve ★"}
+                </button>
+              </div>
+            </div>
 
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block text-sm font-semibold text-accent"
-          >
-            Open full size ↗
-          </a>
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-block text-sm font-semibold text-accent"
+              >
+                Open full size ↗
+              </a>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -907,6 +1014,7 @@ function DeadlineChip({ dueDate, daysLeft }: { dueDate: string; daysLeft: number
 
 function glyph(sub: Submission): string {
   if (sub.status === "redo") return "↻";
+  if (sub.file_type === "manual") return "✓";
   if (sub.file_type === "video") return "▶";
   if (sub.status === "approved") return "★";
   return "✓";
