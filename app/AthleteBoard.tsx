@@ -153,14 +153,14 @@ export default function AthleteBoard({
                   >
                     {task.category && (
                       <span
-                        className={`text-[11px] font-bold uppercase tracking-wide ${
+                        className={`truncate text-[11px] font-bold uppercase tracking-wide ${
                           done ? "text-white/80" : redo ? "text-red-600" : "text-accent"
                         }`}
                       >
                         {task.category}
                       </span>
                     )}
-                    <span className="mt-1 text-base font-bold leading-tight">
+                    <span className="mt-1 text-base font-bold leading-tight [overflow-wrap:anywhere] hyphens-auto">
                       {task.title}
                     </span>
                     <span className="mt-auto pt-3 text-sm font-medium">
@@ -259,7 +259,7 @@ function NamePicker({
       className="flex min-h-screen flex-col"
       style={{ ["--accent" as string]: board.accent_color }}
     >
-      <div className="bg-accent px-6 pb-10 pt-14 text-center text-white">
+      <div className="accent-header px-6 pb-10 pt-14 text-center text-white shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
           {board.subtitle || "Choice Board"}
         </p>
@@ -352,7 +352,7 @@ function Header({
 }) {
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   return (
-    <header className="bg-accent text-white">
+    <header className="accent-header text-white shadow-sm">
       <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">

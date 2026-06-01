@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 
 type Cell = { athlete: Athlete; task: Task; sub: Submission };
+type View = "board" | "athletes" | "leaderboard";
 
 // A tile counts as "done" unless the coach sent it back for a redo.
 const counts = (s: Submission | undefined) => !!s && s.status !== "redo";
@@ -20,7 +21,10 @@ export default function Dashboard({
   athletes: Athlete[];
   submissions: Submission[];
 }) {
+  const [view, setView] = useState<View>("board");
   const [viewing, setViewing] = useState<Cell | null>(null);
+  const [openAthlete, setOpenAthlete] = useState<Athlete | null>(null);
+  const [openTask, setOpenTask] = useState<Task | null>(null);
 
   // Lookup: "athleteId:taskId" → latest submission.
   const byKey = useMemo(() => {
@@ -46,6 +50,15 @@ export default function Dashboard({
       .sort((x, y) => y.done - x.done || x.athlete.name.localeCompare(y.athlete.name));
   }, [athletes, tasks, byKey]);
 
+  // Per-tile completion across the whole team.
+  const taskDone = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of tasks) {
+      m.set(t.id, athletes.filter((a) => counts(byKey.get(`${a.id}:${t.id}`))).length);
+    }
+    return m;
+  }, [tasks, athletes, byKey]);
+
   const daysLeft = useMemo(() => daysUntil(board.due_date), [board.due_date]);
 
   const total = tasks.length;
@@ -56,80 +69,189 @@ export default function Dashboard({
 
   return (
     <div style={{ ["--accent" as string]: board.accent_color }}>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      {/* Title + deadline */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-muted">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
             {board.subtitle || "Active board"}
           </p>
-          <h1 className="font-display text-3xl font-extrabold">{board.title}</h1>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+            {board.title}
+          </h1>
         </div>
         {board.due_date && <DeadlineChip dueDate={board.due_date} daysLeft={daysLeft} />}
       </div>
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Athletes" value={String(athletes.length)} />
-        <Stat label="Tasks per athlete" value={String(total)} />
         <Stat label="Avg completion" value={`${avgPct}%`} accent />
         <Stat label="Finished all" value={String(finishedAll.length)} accent />
-        <Stat label="Needs review" value={String(pendingCount)} />
+        <Stat label="Needs review" value={String(pendingCount)} highlight={pendingCount > 0} />
       </div>
 
-      {/* Leaderboard */}
-      <div className="mb-6 rounded-2xl border border-line bg-surface p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
-            🏁 Leaderboard
-          </h2>
-          <span className="text-xs text-muted">
-            {board.show_leaderboard ? "Visible to athletes" : "Coaches only"}
-          </span>
-        </div>
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted">No athletes yet.</p>
-        ) : (
-          <ol className="space-y-2">
-            {rows.slice(0, 10).map((r, i) => (
-              <li key={r.athlete.id} className="flex items-center gap-3">
-                <span className="w-6 text-center text-base">{medal(i)}</span>
-                <span className="w-40 truncate font-semibold">{r.athlete.name}</span>
-                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${total ? (r.done / total) * 100 : 0}%` }}
-                  />
-                </div>
-                <span className="w-12 text-right text-sm font-bold tabular-nums">
-                  {r.done}/{total}
+      {/* View switcher */}
+      <div className="mb-5 inline-flex rounded-full border border-line bg-surface p-1">
+        {([
+          ["board", "Board"],
+          ["athletes", `Athletes (${athletes.length})`],
+          ["leaderboard", "Leaderboard"],
+        ] as [View, string][]).map(([v, label]) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+              view === v ? "bg-ink text-white" : "text-muted hover:text-ink"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "board" && (
+        <BoardView
+          board={board}
+          tasks={tasks}
+          taskDone={taskDone}
+          athleteCount={athletes.length}
+          onOpenTask={setOpenTask}
+        />
+      )}
+
+      {view === "athletes" && (
+        <AthletesView
+          tasks={tasks}
+          rows={rows}
+          byKey={byKey}
+          total={total}
+          onOpenAthlete={setOpenAthlete}
+          onView={setViewing}
+        />
+      )}
+
+      {view === "leaderboard" && (
+        <LeaderboardView
+          board={board}
+          rows={rows}
+          total={total}
+          finishedAll={finishedAll}
+          onOpenAthlete={setOpenAthlete}
+        />
+      )}
+
+      {openTask && (
+        <TaskDetailModal
+          task={openTask}
+          athletes={athletes}
+          byKey={byKey}
+          onClose={() => setOpenTask(null)}
+          onView={setViewing}
+        />
+      )}
+
+      {openAthlete && (
+        <AthleteDetailModal
+          athlete={openAthlete}
+          tasks={tasks}
+          byKey={byKey}
+          onClose={() => setOpenAthlete(null)}
+          onView={setViewing}
+        />
+      )}
+
+      {viewing && <ArtifactModal cell={viewing} onClose={() => setViewing(null)} />}
+    </div>
+  );
+}
+
+/* ───────────────────────── Board view ───────────────────────── */
+
+function BoardView({
+  board,
+  tasks,
+  taskDone,
+  athleteCount,
+  onOpenTask,
+}: {
+  board: Board;
+  tasks: Task[];
+  taskDone: Map<string, number>;
+  athleteCount: number;
+  onOpenTask: (t: Task) => void;
+}) {
+  if (tasks.length === 0) {
+    return <Empty>No tiles on this board yet.</Empty>;
+  }
+  return (
+    <>
+      <p className="mb-3 text-sm text-muted">
+        How many of your {athleteCount} athletes have finished each tile. Tap a
+        tile to see who&apos;s done and who&apos;s missing.
+      </p>
+      <div className="board-grid gap-3" style={{ ["--cols" as string]: board.columns }}>
+        {tasks.map((t) => {
+          const done = taskDone.get(t.id) ?? 0;
+          const pct = athleteCount > 0 ? Math.round((done / athleteCount) * 100) : 0;
+          const complete = athleteCount > 0 && done === athleteCount;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onOpenTask(t)}
+              className={`flex min-h-[120px] flex-col rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
+                complete ? "border-accent bg-accent/5" : "border-line bg-surface"
+              }`}
+            >
+              {t.category && (
+                <span className="truncate text-[11px] font-bold uppercase tracking-wide text-accent">
+                  {t.category}
                 </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      {/* Finished-all spotlight */}
-      <div className="mb-6 rounded-2xl border border-line bg-surface p-5">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted">
-          🏆 Completed all {total} tasks
-        </h2>
-        {finishedAll.length === 0 ? (
-          <p className="text-sm text-muted">No one has finished everything yet.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {finishedAll.map((r) => (
-              <span
-                key={r.athlete.id}
-                className="rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-white"
-              >
-                {r.athlete.name}
+              )}
+              <span className="mt-1 text-sm font-bold leading-tight [overflow-wrap:anywhere]">
+                {t.title}
               </span>
-            ))}
-          </div>
-        )}
+              <div className="mt-auto pt-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="font-display text-2xl font-extrabold tabular-nums">
+                    {done}
+                    <span className="text-base text-muted">/{athleteCount}</span>
+                  </span>
+                  <span className="text-xs font-semibold text-muted">{pct}%</span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-canvas">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
+    </>
+  );
+}
 
-      {/* Completion matrix */}
+/* ───────────────────────── Athletes (matrix) ───────────────────────── */
+
+function AthletesView({
+  tasks,
+  rows,
+  byKey,
+  total,
+  onOpenAthlete,
+  onView,
+}: {
+  tasks: Task[];
+  rows: { athlete: Athlete; done: number }[];
+  byKey: Map<string, Submission>;
+  total: number;
+  onOpenAthlete: (a: Athlete) => void;
+  onView: (c: Cell) => void;
+}) {
+  if (rows.length === 0) {
+    return <Empty>No athletes on the roster yet.</Empty>;
+  }
+  return (
+    <>
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -151,10 +273,15 @@ export default function Dashboard({
           </thead>
           <tbody>
             {rows.map(({ athlete, done }) => (
-              <tr key={athlete.id} className="border-b border-line last:border-0">
-                <td className="sticky left-0 z-10 bg-surface px-4 py-2.5 font-semibold whitespace-nowrap">
-                  {done === total && total > 0 && "🏆 "}
-                  {athlete.name}
+              <tr key={athlete.id} className="border-b border-line last:border-0 hover:bg-canvas/60">
+                <td className="sticky left-0 z-10 bg-surface px-4 py-2.5 whitespace-nowrap">
+                  <button
+                    onClick={() => onOpenAthlete(athlete)}
+                    className="font-semibold hover:text-accent hover:underline"
+                  >
+                    {done === total && total > 0 && "🏆 "}
+                    {athlete.name}
+                  </button>
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2">
@@ -164,7 +291,7 @@ export default function Dashboard({
                         style={{ width: `${total ? (done / total) * 100 : 0}%` }}
                       />
                     </div>
-                    <span className="w-10 text-xs font-semibold text-muted">
+                    <span className="w-10 text-xs font-semibold text-muted tabular-nums">
                       {done}/{total}
                     </span>
                   </div>
@@ -175,17 +302,11 @@ export default function Dashboard({
                     <td key={t.id} className="px-2 py-2.5 text-center">
                       {sub ? (
                         <button
-                          onClick={() => setViewing({ athlete, task: t, sub })}
+                          onClick={() => onView({ athlete, task: t, sub })}
                           title={`${statusLabel(sub.status)} — view ${athlete.name}'s ${t.title}`}
                           className={`mx-auto flex h-7 w-7 items-center justify-center rounded-md text-white transition hover:opacity-80 ${statusBg(sub.status)}`}
                         >
-                          {sub.status === "redo"
-                            ? "↻"
-                            : sub.file_type === "video"
-                              ? "▶"
-                              : sub.status === "approved"
-                                ? "★"
-                                : "✓"}
+                          {glyph(sub)}
                         </button>
                       ) : (
                         <span className="mx-auto block h-7 w-7 rounded-md border border-line" />
@@ -195,48 +316,298 @@ export default function Dashboard({
                 })}
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={tasks.length + 2} className="px-4 py-8 text-center text-muted">
-                  No athletes on the roster yet.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span>Tap a tile to view evidence &amp; approve.</span>
+        <span>Tap a name for full detail, or a tile to view evidence.</span>
         <Legend className="bg-amber-400" label="Submitted" />
-        <Legend className="bg-emerald-500" label="Approved ★" />
-        <Legend className="bg-red-500" label="Needs redo ↻" />
+        <Legend className="bg-emerald-500" label="Approved" />
+        <Legend className="bg-red-500" label="Needs redo" />
+      </div>
+    </>
+  );
+}
+
+/* ───────────────────────── Leaderboard ───────────────────────── */
+
+function LeaderboardView({
+  board,
+  rows,
+  total,
+  finishedAll,
+  onOpenAthlete,
+}: {
+  board: Board;
+  rows: { athlete: Athlete; done: number }[];
+  total: number;
+  finishedAll: { athlete: Athlete; done: number }[];
+  onOpenAthlete: (a: Athlete) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-line bg-surface p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
+            🏁 Standings
+          </h2>
+          <span className="text-xs text-muted">
+            {board.show_leaderboard ? "Visible to athletes" : "Coaches only"}
+          </span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted">No athletes yet.</p>
+        ) : (
+          <ol className="space-y-1.5">
+            {rows.map((r, i) => (
+              <li key={r.athlete.id}>
+                <button
+                  onClick={() => onOpenAthlete(r.athlete)}
+                  className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left hover:bg-canvas"
+                >
+                  <span className="w-7 text-center text-base">{medal(i)}</span>
+                  <span className="w-40 truncate font-semibold">{r.athlete.name}</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${total ? (r.done / total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-right text-sm font-bold tabular-nums">
+                    {r.done}/{total}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
-      {viewing && <ArtifactModal cell={viewing} onClose={() => setViewing(null)} />}
+      <div className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted">
+          🏆 Completed all {total} tasks
+        </h2>
+        {finishedAll.length === 0 ? (
+          <p className="text-sm text-muted">No one has finished everything yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {finishedAll.map((r) => (
+              <span
+                key={r.athlete.id}
+                className="rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-white"
+              >
+                {r.athlete.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+/* ───────────────────────── Task detail (who's done) ───────────────────────── */
+
+function TaskDetailModal({
+  task,
+  athletes,
+  byKey,
+  onClose,
+  onView,
+}: {
+  task: Task;
+  athletes: Athlete[];
+  byKey: Map<string, Submission>;
+  onClose: () => void;
+  onView: (c: Cell) => void;
+}) {
+  const done: { athlete: Athlete; sub: Submission }[] = [];
+  const missing: Athlete[] = [];
+  for (const a of athletes) {
+    const sub = byKey.get(`${a.id}:${task.id}`);
+    if (sub && sub.status !== "redo") done.push({ athlete: a, sub });
+    else missing.push(a);
+  }
+
+  return (
+    <Sheet onClose={onClose} title={task.title} eyebrow={task.category || "Tile"}>
+      <p className="mb-4 text-sm font-semibold">
+        {done.length}/{athletes.length} done
+      </p>
+      {done.length > 0 && (
+        <ul className="mb-4 space-y-1">
+          {done.map(({ athlete, sub }) => (
+            <li key={athlete.id}>
+              <button
+                onClick={() => onView({ athlete, task, sub })}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-canvas"
+              >
+                <span className="font-medium">{athlete.name}</span>
+                <span className="inline-flex items-center gap-2 text-xs">
+                  <span className={`rounded-full px-2 py-0.5 font-bold text-white ${statusBg(sub.status)}`}>
+                    {statusLabel(sub.status)}
+                  </span>
+                  <span className="text-accent">View →</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {missing.length > 0 && (
+        <>
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">
+            Not done ({missing.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {missing.map((a) => (
+              <span key={a.id} className="rounded-full border border-line px-2.5 py-1 text-xs text-muted">
+                {a.name}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </Sheet>
+  );
+}
+
+/* ───────────────────────── Athlete detail ───────────────────────── */
+
+function AthleteDetailModal({
+  athlete,
+  tasks,
+  byKey,
+  onClose,
+  onView,
+}: {
+  athlete: Athlete;
+  tasks: Task[];
+  byKey: Map<string, Submission>;
+  onClose: () => void;
+  onView: (c: Cell) => void;
+}) {
+  const done = tasks.filter((t) => counts(byKey.get(`${athlete.id}:${t.id}`))).length;
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+
+  return (
+    <Sheet onClose={onClose} title={athlete.name} eyebrow="Athlete">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
+          <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-sm font-bold tabular-nums">
+          {done}/{tasks.length} · {pct}%
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {tasks.map((t) => {
+          const sub = byKey.get(`${athlete.id}:${t.id}`);
+          return (
+            <li
+              key={t.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                {t.category && (
+                  <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted">
+                    {t.category}
+                  </p>
+                )}
+                <p className="text-sm font-semibold [overflow-wrap:anywhere]">{t.title}</p>
+              </div>
+              {sub ? (
+                <button
+                  onClick={() => onView({ athlete, task: t, sub })}
+                  className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold"
+                >
+                  <span className={`rounded-full px-2 py-0.5 text-white ${statusBg(sub.status)}`}>
+                    {statusLabel(sub.status)}
+                  </span>
+                  <span className="text-accent">View →</span>
+                </button>
+              ) : (
+                <span className="shrink-0 text-xs font-semibold text-muted">Not started</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Sheet>
+  );
+}
+
+/* ───────────────────────── Shared bits ───────────────────────── */
 
 function Stat({
   label,
   value,
   accent,
+  highlight,
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <div
       className={`rounded-2xl border p-4 ${
-        accent ? "border-transparent bg-accent text-white" : "border-line bg-surface"
+        accent
+          ? "border-transparent bg-accent text-white"
+          : highlight
+            ? "border-amber-300 bg-amber-50"
+            : "border-line bg-surface"
       }`}
     >
       <p className={`text-xs font-semibold uppercase tracking-wide ${accent ? "text-white/80" : "text-muted"}`}>
         {label}
       </p>
       <p className="font-display mt-1 text-3xl font-extrabold">{value}</p>
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-muted">
+      {children}
+    </div>
+  );
+}
+
+function Sheet({
+  title,
+  eyebrow,
+  children,
+  onClose,
+}: {
+  title: string;
+  eyebrow: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface p-6 shadow-xl sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">{eyebrow}</p>
+            <h3 className="font-display text-xl font-extrabold [overflow-wrap:anywhere]">{title}</h3>
+          </div>
+          <button onClick={onClose} className="text-2xl leading-none text-muted hover:text-ink" aria-label="Close">
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
@@ -271,11 +642,11 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-3xl bg-surface p-5"
+        className="w-full max-w-lg rounded-3xl border border-line bg-surface p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start justify-between">
@@ -283,13 +654,13 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
             <p className="text-xs font-bold uppercase tracking-wide text-muted">
               {cell.task.category || "Task"}
             </p>
-            <h3 className="text-lg font-bold">{cell.task.title}</h3>
+            <h3 className="text-lg font-bold [overflow-wrap:anywhere]">{cell.task.title}</h3>
             <p className="text-sm text-muted">
               {cell.athlete.name} ·{" "}
               {new Date(cell.sub.created_at).toLocaleDateString()}
             </p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-muted">
+          <button onClick={onClose} className="text-2xl leading-none text-muted hover:text-ink">
             ×
           </button>
         </div>
@@ -308,9 +679,7 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
         </div>
 
         {cell.sub.note && (
-          <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">
-            “{cell.sub.note}”
-          </p>
+          <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">“{cell.sub.note}”</p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -382,6 +751,13 @@ function DeadlineChip({ dueDate, daysLeft }: { dueDate: string; daysLeft: number
           : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left · due ${due}`}
     </span>
   );
+}
+
+function glyph(sub: Submission): string {
+  if (sub.status === "redo") return "↻";
+  if (sub.file_type === "video") return "▶";
+  if (sub.status === "approved") return "★";
+  return "✓";
 }
 
 function statusBg(status: string): string {

@@ -47,6 +47,14 @@ button {
 .bg-accent {
   background-color: var(--accent);
 }
+/* Same-hue gradient for hero/header bands — adds depth without looking generic. */
+.accent-header {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 92%, white),
+    color-mix(in srgb, var(--accent) 78%, black)
+  );
+}
 .text-accent {
   color: var(--accent);
 }

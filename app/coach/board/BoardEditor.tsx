@@ -348,7 +348,7 @@ export default function BoardEditor({
           Live preview
         </p>
         <div className="overflow-hidden rounded-2xl border border-line">
-          <div className="bg-accent px-4 py-5 text-center text-white">
+          <div className="accent-header px-4 py-5 text-center text-white">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
               {subtitle || "Choice Board"}
             </p>
@@ -364,9 +364,9 @@ export default function BoardEditor({
                 className="rounded-xl border border-line bg-surface p-2.5"
               >
                 {t.category && (
-                  <p className="text-[9px] font-bold uppercase text-accent">{t.category}</p>
+                  <p className="truncate text-[9px] font-bold uppercase text-accent">{t.category}</p>
                 )}
-                <p className="text-xs font-bold leading-tight">{t.title}</p>
+                <p className="text-xs font-bold leading-tight [overflow-wrap:anywhere]">{t.title}</p>
               </div>
             ))}
           </div>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Inter, Oswald } from "next/font/google";
+import { Manrope, Oswald } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const sans = Manrope({
   subsets: ["latin"],
   variable: "--font-sans",
 });
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${display.variable} h-full`}
+      className={`${sans.variable} ${display.variable} h-full`}
     >
       <body className="min-h-full">{children}</body>
     </html>
