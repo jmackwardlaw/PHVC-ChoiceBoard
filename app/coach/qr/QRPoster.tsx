@@ -12,10 +12,10 @@ export default function QRPoster({
   subtitle: string;
   accent: string;
 }) {
-  // The athlete board lives at the site root.
+  // The athlete board lives at /choiceboard.
   const [url, setUrl] = useState("");
   useEffect(() => {
-    setUrl(window.location.origin + "/");
+    setUrl(window.location.origin + "/choiceboard");
   }, []);
 
   return (

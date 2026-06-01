@@ -48,7 +48,7 @@ export default async function CoachLogin({
           <LoginButton />
 
           <a
-            href="/"
+            href="/choiceboard"
             className="mt-6 inline-block text-sm font-medium text-muted hover:text-ink hover:underline"
           >
             ← Back to athlete board
