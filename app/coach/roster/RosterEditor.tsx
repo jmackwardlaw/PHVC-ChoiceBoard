@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Athlete } from "@/lib/types";
+import Modal from "../Modal";
 
 export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
   const [bulk, setBulk] = useState("");
   const [showBulk, setShowBulk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [toDelete, setToDelete] = useState<Athlete | null>(null);
 
   async function call(body: Record<string, unknown>) {
     setBusy(true);
@@ -88,13 +90,47 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
         </h2>
         <div className="space-y-1.5">
           {athletes.map((a) => (
-            <RosterRow key={a.id} athlete={a} onCall={call} busy={busy} />
+            <RosterRow
+              key={a.id}
+              athlete={a}
+              onCall={call}
+              busy={busy}
+              onRequestDelete={() => setToDelete(a)}
+            />
           ))}
           {athletes.length === 0 && (
             <p className="py-6 text-center text-muted">No athletes yet.</p>
           )}
         </div>
       </section>
+
+      {toDelete && (
+        <Modal title="Remove athlete?" onClose={() => setToDelete(null)}>
+          <p className="text-sm text-muted">
+            This permanently removes{" "}
+            <strong className="text-ink">{toDelete.name}</strong> and all of their
+            uploaded submissions. This can&apos;t be undone.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setToDelete(null)}
+              className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                const a = toDelete;
+                setToDelete(null);
+                await call({ action: "delete", id: a.id });
+              }}
+              className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white hover:bg-red-700"
+            >
+              Remove
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -103,10 +139,12 @@ function RosterRow({
   athlete,
   onCall,
   busy,
+  onRequestDelete,
 }: {
   athlete: Athlete;
   onCall: (body: Record<string, unknown>) => Promise<void>;
   busy: boolean;
+  onRequestDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(athlete.name);
@@ -156,10 +194,7 @@ function RosterRow({
         {athlete.active ? "Deactivate" : "Activate"}
       </button>
       <button
-        onClick={() => {
-          if (confirm(`Remove ${athlete.name}? This deletes their submissions too.`))
-            onCall({ action: "delete", id: athlete.id });
-        }}
+        onClick={onRequestDelete}
         disabled={busy}
         className="rounded-lg px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
       >

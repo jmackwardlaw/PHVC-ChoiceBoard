@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Board, Task } from "@/lib/types";
+import Modal from "../Modal";
 
 type Tile = { id?: string; title: string; category: string };
 
@@ -28,6 +29,16 @@ export default function BoardEditor({
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // New-board pop-up card
+  const [showNew, setShowNew] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newSub, setNewSub] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  // Activate-confirm pop-up card
+  const [toActivate, setToActivate] = useState<Board | null>(null);
+  const [activating, setActivating] = useState(false);
 
   const archived = allBoards.filter((b) => !b.is_active);
 
@@ -73,31 +84,42 @@ export default function BoardEditor({
     setTimeout(() => setSaved(false), 2500);
   }
 
-  async function startNewMonth() {
-    const newTitle = prompt("Title for the new board?", title);
-    if (newTitle === null) return;
-    const newSub = prompt("Month / subtitle? (e.g. July 2026)", "");
+  function openNewBoard() {
+    setNewTitle(board ? title : "Conditioning Board");
+    setNewSub("");
+    setShowNew(true);
+  }
+
+  async function createBoard() {
+    if (newTitle.trim().length < 2) return;
+    setCreating(true);
     const res = await fetch("/api/coach/board", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "clone-new",
         fromBoardId: board?.id,
-        title: newTitle,
-        subtitle: newSub ?? "",
+        title: newTitle.trim(),
+        subtitle: newSub.trim(),
       }),
     });
-    if (res.ok) router.refresh();
+    setCreating(false);
+    if (res.ok) {
+      // Full reload so the editor re-reads the brand-new active board.
+      window.location.reload();
+    }
   }
 
-  async function activate(boardId: string) {
-    if (!confirm("Make this the active board athletes see?")) return;
+  async function confirmActivate() {
+    if (!toActivate) return;
+    setActivating(true);
     const res = await fetch("/api/coach/board", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "activate", boardId }),
+      body: JSON.stringify({ action: "activate", boardId: toActivate.id }),
     });
-    if (res.ok) router.refresh();
+    setActivating(false);
+    if (res.ok) window.location.reload();
   }
 
   if (!board) {
@@ -106,11 +128,23 @@ export default function BoardEditor({
         <h1 className="font-display text-2xl font-extrabold">No board yet</h1>
         <p className="mt-2 text-muted">Create your first board to get started.</p>
         <button
-          onClick={startNewMonth}
+          onClick={openNewBoard}
           className="mt-5 rounded-full bg-ink px-5 py-2.5 font-semibold text-white"
         >
           Create a board
         </button>
+        {showNew && (
+          <NewBoardModal
+            title={newTitle}
+            subtitle={newSub}
+            creating={creating}
+            onTitle={setNewTitle}
+            onSubtitle={setNewSub}
+            onCreate={createBoard}
+            onClose={() => setShowNew(false)}
+            cloning={false}
+          />
+        )}
       </div>
     );
   }
@@ -236,7 +270,7 @@ export default function BoardEditor({
             Past submissions stay saved with the old board.
           </p>
           <button
-            onClick={startNewMonth}
+            onClick={openNewBoard}
             className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
           >
             Start new month →
@@ -257,7 +291,7 @@ export default function BoardEditor({
                     <p className="text-xs text-muted">{b.subtitle}</p>
                   </div>
                   <button
-                    onClick={() => activate(b.id)}
+                    onClick={() => setToActivate(b)}
                     className="rounded-full border border-line px-3 py-1 text-sm font-semibold hover:bg-canvas"
                   >
                     Make active
@@ -300,8 +334,114 @@ export default function BoardEditor({
         </div>
       </div>
 
+      {showNew && (
+        <NewBoardModal
+          title={newTitle}
+          subtitle={newSub}
+          creating={creating}
+          onTitle={setNewTitle}
+          onSubtitle={setNewSub}
+          onCreate={createBoard}
+          onClose={() => setShowNew(false)}
+          cloning={!!board}
+        />
+      )}
+
+      {toActivate && (
+        <Modal title="Make this board active?" onClose={() => setToActivate(null)}>
+          <p className="text-sm text-muted">
+            Athletes will see <strong className="text-ink">{toActivate.title}</strong>{" "}
+            {toActivate.subtitle && `(${toActivate.subtitle})`}. The current board
+            becomes a past board.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setToActivate(null)}
+              className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmActivate}
+              disabled={activating}
+              className="rounded-full bg-ink px-5 py-2 font-semibold text-white disabled:opacity-50"
+            >
+              {activating ? "Switching…" : "Make active"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       <style>{`.input{width:100%;border-radius:0.6rem;border:1px solid var(--color-line);background:var(--color-canvas);padding:0.55rem 0.75rem;font-size:0.9rem;outline:none}.input:focus{border-color:var(--accent)}`}</style>
     </div>
+  );
+}
+
+function NewBoardModal({
+  title,
+  subtitle,
+  creating,
+  cloning,
+  onTitle,
+  onSubtitle,
+  onCreate,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  creating: boolean;
+  cloning: boolean;
+  onTitle: (v: string) => void;
+  onSubtitle: (v: string) => void;
+  onCreate: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal title={cloning ? "Start a new month" : "Create a board"} onClose={onClose}>
+      {cloning && (
+        <p className="mb-4 text-sm text-muted">
+          This copies your current tiles into a fresh board and archives the old
+          one. Past submissions stay saved.
+        </p>
+      )}
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold text-muted">Title</span>
+        <input
+          autoFocus
+          value={title}
+          onChange={(e) => onTitle(e.target.value)}
+          placeholder="Conditioning Board"
+          className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 outline-none focus:border-ink"
+        />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-sm font-semibold text-muted">
+          Month / subtitle
+        </span>
+        <input
+          value={subtitle}
+          onChange={(e) => onSubtitle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onCreate()}
+          placeholder="July 2026"
+          className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 outline-none focus:border-ink"
+        />
+      </label>
+      <div className="mt-5 flex justify-end gap-2">
+        <button
+          onClick={onClose}
+          className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onCreate}
+          disabled={creating || title.trim().length < 2}
+          className="rounded-full bg-ink px-5 py-2 font-semibold text-white disabled:opacity-50"
+        >
+          {creating ? "Creating…" : "Create board"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
