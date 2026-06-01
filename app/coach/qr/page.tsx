@@ -10,7 +10,7 @@ export default async function QRPage() {
   const board = await getActiveBoard();
 
   return (
-    <CoachShell email={coach.email}>
+    <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>
       <QRPoster
         title={board?.title ?? "Choice Board"}
         subtitle={board?.subtitle ?? ""}

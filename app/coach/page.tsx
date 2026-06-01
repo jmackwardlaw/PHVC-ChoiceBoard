@@ -26,7 +26,7 @@ export default async function CoachHome({
 
   if (!board) {
     return (
-      <CoachShell email={coach.email}>
+      <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>
         <div className="rounded-3xl border border-line bg-surface p-10 text-center">
           <h1 className="font-display text-2xl font-extrabold">No active board</h1>
           <p className="mt-2 text-muted">Create this month&apos;s board to get started.</p>
@@ -53,7 +53,7 @@ export default async function CoachHome({
   const athletes = allAthletes.filter((a) => a.active || participated.has(a.id));
 
   return (
-    <CoachShell email={coach.email}>
+    <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>
       <Dashboard
         board={board}
         allBoards={allBoards}

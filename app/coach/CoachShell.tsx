@@ -1,30 +1,36 @@
 import CoachNav from "./CoachNav";
 
+function lastNameFrom(name?: string | null): string | null {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return parts.length ? parts[parts.length - 1] : null;
+}
+
 export default function CoachShell({
   email,
+  name,
   children,
 }: {
   email?: string | null;
+  name?: string | null;
   children: React.ReactNode;
 }) {
+  const lastName = lastNameFrom(name);
+  const greeting = lastName ? `Welcome Coach ${lastName}` : "Coach Dashboard";
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
-          <span className="flex items-center gap-2.5">
-            <span className="flex shrink-0 items-center rounded-xl bg-ink px-2.5 py-2 shadow-sm">
+          <span className="flex items-center gap-3">
+            <span className="flex shrink-0 items-center rounded-xl bg-ink px-3 py-2.5 shadow-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/taking-it-back-white.svg"
                 alt="Palmetto — Taking It Back"
-                className="h-6 w-auto"
+                className="h-9 w-auto sm:h-11"
               />
             </span>
-            <span className="font-race text-2xl uppercase leading-none">
-              PHVC{" "}
-              <span className="font-display align-middle text-base font-semibold lowercase tracking-tight text-muted">
-                coach
-              </span>
+            <span className="font-race text-xl uppercase leading-none sm:text-2xl">
+              {greeting}
             </span>
           </span>
           <CoachNav />

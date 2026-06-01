@@ -11,7 +11,7 @@ export default async function BoardPage() {
   const tasks = board ? await getTasks(board.id) : [];
 
   return (
-    <CoachShell email={coach.email}>
+    <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>
       <BoardEditor board={board} tasks={tasks} allBoards={allBoards} />
     </CoachShell>
   );

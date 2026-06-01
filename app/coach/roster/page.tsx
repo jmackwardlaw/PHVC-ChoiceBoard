@@ -10,7 +10,7 @@ export default async function RosterPage() {
   const athletes = await getAthletes(false);
 
   return (
-    <CoachShell email={coach.email}>
+    <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>
       <RosterEditor athletes={athletes} />
     </CoachShell>
   );
