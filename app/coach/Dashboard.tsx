@@ -149,10 +149,10 @@ export default function Dashboard({
 
       {/* Summary cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Athletes" value={String(athletes.length)} />
-        <Stat label="Avg completion" value={`${avgPct}%`} accent />
-        <Stat label="Finished all" value={String(finishedAll.length)} accent />
-        <Stat label="Needs review" value={String(pendingCount)} highlight={pendingCount > 0} />
+        <Stat i={0} label="Athletes" value={String(athletes.length)} />
+        <Stat i={1} label="Avg completion" value={`${avgPct}%`} accent />
+        <Stat i={2} label="Finished all" value={String(finishedAll.length)} accent />
+        <Stat i={3} label="Needs review" value={String(pendingCount)} highlight={pendingCount > 0} />
       </div>
 
       {/* View switcher */}
@@ -166,7 +166,7 @@ export default function Dashboard({
             key={v}
             onClick={() => setView(v)}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              view === v ? "bg-ink text-white" : "text-muted hover:text-ink"
+              view === v ? "bg-accent text-white shadow-card" : "text-muted hover:text-ink"
             }`}
           >
             {label}
@@ -265,7 +265,7 @@ function BoardView({
         tile to see who&apos;s done and who&apos;s missing.
       </p>
       <div className="board-grid gap-3" style={{ ["--cols" as string]: board.columns }}>
-        {tasks.map((t) => {
+        {tasks.map((t, i) => {
           const done = taskDone.get(t.id) ?? 0;
           const pct = athleteCount > 0 ? Math.round((done / athleteCount) * 100) : 0;
           const complete = athleteCount > 0 && done === athleteCount;
@@ -273,7 +273,8 @@ function BoardView({
             <button
               key={t.id}
               onClick={() => onOpenTask(t)}
-              className={`group relative flex min-h-[130px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lift ${
+              style={{ ["--i" as string]: i }}
+              className={`reveal group relative flex min-h-[130px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lift ${
                 complete
                   ? "tile-done border-transparent text-white shadow-lift"
                   : "tile border-line shadow-card hover:border-accent"
@@ -783,19 +784,22 @@ function Stat({
   value,
   accent,
   highlight,
+  i = 0,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   highlight?: boolean;
+  i?: number;
 }) {
   return (
     <div
-      className={`rounded-2xl border p-4 shadow-card ${
+      style={{ ["--i" as string]: i }}
+      className={`reveal rounded-2xl border p-4 shadow-card ${
         accent
           ? "border-transparent bg-accent text-white"
           : highlight
-            ? "border-amber-300 bg-amber-50"
+            ? "border-amber-500/40 bg-amber-500/10"
             : "border-line bg-surface"
       }`}
     >
@@ -828,7 +832,7 @@ function Sheet({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -890,7 +894,7 @@ function ArtifactModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -931,7 +935,7 @@ function ArtifactModal({
                   onUnmark(cell.sub.id);
                   onClose();
                 }}
-                className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                className="rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/15"
               >
                 Undo · mark not done
               </button>
@@ -939,7 +943,7 @@ function ArtifactModal({
           </>
         ) : (
           <>
-            <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/5">
+            <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/30">
               {error ? (
                 <p className="p-6 text-sm text-red-600">{error}</p>
               ) : !url ? (
@@ -964,7 +968,7 @@ function ArtifactModal({
                 <button
                   onClick={() => setReview("redo")}
                   disabled={saving !== null}
-                  className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  className="rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/15 disabled:opacity-50"
                 >
                   {saving === "redo" ? "…" : "Needs redo ↻"}
                 </button>
@@ -1014,9 +1018,9 @@ function DeadlineChip({ dueDate, daysLeft }: { dueDate: string; daysLeft: number
     <span
       className={`rounded-full px-3 py-1.5 text-sm font-bold ${
         closed
-          ? "bg-red-100 text-red-700"
+          ? "bg-red-500/15 text-red-300"
           : daysLeft <= 3
-            ? "bg-amber-100 text-amber-800"
+            ? "bg-amber-500/15 text-amber-300"
             : "bg-canvas text-muted"
       }`}
     >

@@ -20,7 +20,7 @@ export default function LoginButton() {
     <button
       onClick={signIn}
       disabled={busy}
-      className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-white py-3.5 font-semibold text-ink shadow-sm transition hover:bg-canvas disabled:opacity-50"
+      className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white py-3.5 font-semibold text-[#242424] shadow-card transition hover:bg-gray-100 disabled:opacity-50"
     >
       <GoogleIcon />
       {busy ? "Redirecting…" : "Continue with Google"}

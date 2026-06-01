@@ -178,7 +178,7 @@ export default function BoardEditor({
         <p className="mt-2 text-muted">Create your first board to get started.</p>
         <button
           onClick={openNewBoard}
-          className="mt-5 rounded-full bg-ink px-5 py-2.5 font-semibold text-white"
+          className="mt-5 rounded-full bg-accent px-5 py-2.5 font-semibold text-white shadow-card hover:opacity-90"
         >
           Create a board
         </button>
@@ -317,7 +317,7 @@ export default function BoardEditor({
                 </div>
                 <button
                   onClick={() => removeTile(i)}
-                  className="rounded-lg px-2 py-1 text-sm font-semibold text-red-500 hover:bg-red-50"
+                  className="rounded-lg px-2 py-1 text-sm font-semibold text-red-400 hover:bg-red-500/15"
                 >
                   Remove
                 </button>
@@ -334,7 +334,7 @@ export default function BoardEditor({
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
-          {saved && <span className="text-sm font-semibold text-emerald-600">Saved ✓</span>}
+          {saved && <span className="text-sm font-semibold text-emerald-400">Saved ✓</span>}
         </div>
 
         <section className="rounded-2xl border border-line bg-surface p-5">
@@ -376,7 +376,7 @@ export default function BoardEditor({
                     </button>
                     <button
                       onClick={() => openDelete(b)}
-                      className="rounded-full px-3 py-1 text-sm font-semibold text-red-500 hover:bg-red-50"
+                      className="rounded-full px-3 py-1 text-sm font-semibold text-red-400 hover:bg-red-500/15"
                     >
                       Delete
                     </button>
@@ -454,7 +454,7 @@ export default function BoardEditor({
             <button
               onClick={confirmActivate}
               disabled={activating}
-              className="rounded-full bg-ink px-5 py-2 font-semibold text-white disabled:opacity-50"
+              className="rounded-full bg-accent px-5 py-2 font-semibold text-white disabled:opacity-50"
             >
               {activating ? "Switching…" : "Make active"}
             </button>
@@ -471,7 +471,7 @@ export default function BoardEditor({
             tiles and every athlete upload on it. This can&apos;t be undone.
           </p>
           {deleteError && (
-            <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300">
               {deleteError}
             </p>
           )}
@@ -550,7 +550,7 @@ function NewBoardModal({
         />
       </label>
       {error && (
-        <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+        <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300">
           {error}
         </p>
       )}
@@ -564,7 +564,7 @@ function NewBoardModal({
         <button
           onClick={onCreate}
           disabled={creating || title.trim().length < 2}
-          className="rounded-full bg-ink px-5 py-2 font-semibold text-white transition active:scale-95 disabled:opacity-50"
+          className="rounded-full bg-accent px-5 py-2 font-semibold text-white transition active:scale-95 disabled:opacity-50"
         >
           {creating ? "Creating…" : "Create board"}
         </button>

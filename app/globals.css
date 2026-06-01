@@ -4,27 +4,47 @@
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
 
-  /* Palmetto Athletics palette: Red #e20706, Dark Grey #242424, White. */
-  --color-ink: #242424;
-  --color-muted: #6b6b6f;
-  --color-line: #e6e6e8;
-  --color-surface: #ffffff;
-  --color-canvas: #f5f5f6;
+  /* ── Dark sports-tech palette ───────────────────────────────────────────
+     Brand stays: Red #e20706 (power accent), Dark Grey #242424 (base hue),
+     White (text). Charcoal surfaces layer base → raised → overlay so the UI
+     reads with depth instead of one flat sheet. */
+  --color-ink: #f4f4f5;                 /* primary text (light on dark) */
+  --color-muted: #9b9ba4;               /* secondary text */
+  --color-line: rgba(255, 255, 255, 0.1); /* subtle borders */
+  --color-surface: #1e1e22;             /* raised cards / panels */
+  --color-canvas: #131316;              /* page base + sunken inputs */
 }
 
 :root {
   /* Brand red — overridden per-board via inline style on the page wrapper. */
   --accent: #e20706;
+
+  /* Surface layers (semantic aliases for the charcoal stack). */
+  --surface-base: #131316;
+  --surface-raised: #1e1e22;
+  --surface-overlay: #26262c;
+  --surface-sunken: #0f0f12;
+
+  /* Shadow + glow system tuned for a dark base. */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 28px -14px rgba(0, 0, 0, 0.7);
+  --shadow-lift:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 28px 56px -20px rgba(0, 0, 0, 0.85);
 }
 
 html {
   height: 100%;
+  /* Native controls (scrollbars, date pickers, form fields) render dark. */
+  color-scheme: dark;
 }
 
 body {
-  background-color: var(--color-canvas);
-  /* Faint dot-grid texture so surfaces read as "designed," not flat. */
-  background-image: radial-gradient(rgba(36, 36, 36, 0.045) 1px, transparent 1px);
+  background-color: var(--surface-base);
+  /* Faint dot-grid texture (white-alpha on dark) so surfaces read as
+     "designed," not flat. */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 22px 22px;
   background-attachment: fixed;
   color: var(--color-ink);
@@ -43,24 +63,20 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Soft, layered card shadow — warmer and less generic than a flat border. */
+/* Layered card shadow (dark). */
 .shadow-card {
-  box-shadow:
-    0 1px 2px rgba(15, 23, 38, 0.04),
-    0 8px 24px -12px rgba(15, 23, 38, 0.12);
+  box-shadow: var(--shadow-card);
 }
-
 /* Stronger lift for interactive tiles / completed states. */
 .shadow-lift {
-  box-shadow:
-    0 2px 4px rgba(15, 23, 38, 0.06),
-    0 18px 40px -16px rgba(15, 23, 38, 0.28);
+  box-shadow: var(--shadow-lift);
 }
 
-/* Choice-board tiles: subtle depth gradient + a colored category rail. */
+/* Choice-board tiles: raised charcoal panel + a glowing colored category
+   rail. Hover lifts the tile and warms the rail. */
 .tile {
   position: relative;
-  background-image: linear-gradient(165deg, #ffffff 0%, #eef1f5 100%);
+  background-image: linear-gradient(165deg, #26262c 0%, #18181c 100%);
 }
 .tile::before {
   content: "";
@@ -71,26 +87,30 @@ body {
   background: linear-gradient(
     180deg,
     var(--accent),
-    color-mix(in srgb, var(--accent) 70%, black)
+    color-mix(in srgb, var(--accent) 60%, black)
   );
-  opacity: 0.9;
+  box-shadow: 0 0 16px -2px color-mix(in srgb, var(--accent) 70%, transparent);
+  opacity: 0.95;
 }
-/* Completed tile: rich same-hue accent gradient + pinstripe texture. */
+/* Completed tile: rich same-hue accent gradient + pinstripe texture + glow. */
 .tile-done {
   background-color: var(--accent);
   background-image:
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 255, 255, 0.06) 0px,
-      rgba(255, 255, 255, 0.06) 2px,
+      rgba(255, 255, 255, 0.07) 0px,
+      rgba(255, 255, 255, 0.07) 2px,
       transparent 2px,
       transparent 11px
     ),
     linear-gradient(
       155deg,
       color-mix(in srgb, var(--accent) 98%, white),
-      color-mix(in srgb, var(--accent) 70%, black)
+      color-mix(in srgb, var(--accent) 62%, black)
     );
+  box-shadow:
+    var(--shadow-lift),
+    0 0 28px -6px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 /* Make every button feel responsive: pointer cursor + a quick press effect. */
@@ -101,7 +121,8 @@ button:not(:disabled):active {
   transform: scale(0.97);
 }
 button {
-  transition: transform 0.06s ease, opacity 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.06s ease, opacity 0.15s ease, background-color 0.15s ease,
+    box-shadow 0.2s ease, border-color 0.15s ease;
 }
 
 /* Accent-driven helpers so a board's color flows everywhere. */
@@ -109,24 +130,26 @@ button {
   background-color: var(--accent);
 }
 /* Hero/header bands: same-hue gradient + faint diagonal pinstripe (athletic
-   jersey texture) + a soft bottom edge. Reads branded, not generic. */
+   jersey texture) + a soft glow edge. Reads branded and bold on charcoal. */
 .accent-header {
   position: relative;
   background-color: var(--accent);
   background-image:
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 255, 255, 0.05) 0px,
-      rgba(255, 255, 255, 0.05) 2px,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 2px,
       transparent 2px,
       transparent 10px
     ),
     linear-gradient(
       135deg,
       color-mix(in srgb, var(--accent) 96%, white),
-      color-mix(in srgb, var(--accent) 76%, black)
+      color-mix(in srgb, var(--accent) 64%, black)
     );
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 18px 40px -24px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .text-accent {
   color: var(--accent);
@@ -146,5 +169,29 @@ button {
 @media (min-width: 768px) {
   .board-grid {
     grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  }
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────
+   Staggered entrance for primary content. Items set --i for the delay. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reveal {
+  opacity: 0;
+  animation: reveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    animation: none;
   }
 }
