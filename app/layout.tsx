@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Oswald } from "next/font/google";
+import { Anton, Manrope, Oswald } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -12,6 +12,13 @@ const display = Oswald({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-display",
+});
+
+// Big sporty headers/titles.
+const heading = Anton({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-heading",
 });
 
 // Palmetto Athletics brand display face — big sporty wordmarks/titles.
@@ -34,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${display.variable} ${race.variable} h-full`}
+      className={`${sans.variable} ${display.variable} ${heading.variable} ${race.variable} h-full`}
     >
       <body className="min-h-full">{children}</body>
     </html>

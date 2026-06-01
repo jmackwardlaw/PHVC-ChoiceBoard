@@ -40,10 +40,11 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Brand racing face — sporty wordmarks + big titles. */
+/* Big sporty titles — Anton (condensed all-caps). Racesport stays loaded as
+   --font-race if we want to switch back. */
 .font-race {
-  font-family: var(--font-race), var(--font-display), "Arial Black", sans-serif;
-  letter-spacing: 0.01em;
+  font-family: var(--font-heading), var(--font-display), "Arial Black", sans-serif;
+  letter-spacing: 0.005em;
 }
 
 /* Soft, layered card shadow — warmer and less generic than a flat border. */
