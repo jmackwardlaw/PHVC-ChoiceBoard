@@ -1,5 +1,4 @@
 import CoachNav from "./CoachNav";
-import Logo from "../Logo";
 
 export default function CoachShell({
   email,
@@ -13,7 +12,14 @@ export default function CoachShell({
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
           <span className="flex items-center gap-2.5">
-            <Logo size={40} className="shrink-0" />
+            <span className="flex shrink-0 items-center rounded-xl bg-ink px-2.5 py-2 shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/taking-it-back-white.svg"
+                alt="Palmetto — Taking It Back"
+                className="h-6 w-auto"
+              />
+            </span>
             <span className="font-race text-2xl uppercase leading-none">
               PHVC{" "}
               <span className="font-display align-middle text-base font-semibold lowercase tracking-tight text-muted">

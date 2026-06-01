@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
-import Logo from "./Logo";
 import { softBreak } from "./softBreak";
 
 const STORAGE_KEY = "phvc-athlete";
@@ -360,7 +359,12 @@ function Header({
   return (
     <header className="accent-header text-white shadow-sm">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4">
-        <Logo variant="badge" size={40} className="shrink-0" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/taking-it-back-white.svg"
+          alt="Palmetto — Taking It Back"
+          className="h-9 w-auto shrink-0 sm:h-10"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
             {board.subtitle || "Choice Board"}
