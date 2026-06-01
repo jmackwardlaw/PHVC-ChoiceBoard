@@ -36,6 +36,8 @@ export async function POST(request: Request) {
         subtitle: String(body.subtitle ?? "").slice(0, 120),
         accent_color: String(body.accent_color ?? "#1aa0b8").slice(0, 9),
         columns: clampColumns(Number(body.columns)),
+        due_date: normalizeDate(body.due_date),
+        show_leaderboard: Boolean(body.show_leaderboard),
       })
       .eq("id", boardId);
 
@@ -78,16 +80,18 @@ export async function POST(request: Request) {
 
     let accent = "#1aa0b8";
     let columns = 4;
+    let showLeaderboard = false;
     let tiles: Tile[] = [];
     if (fromBoardId) {
       const { data: src } = await supabase
         .from("boards")
-        .select("accent_color, columns")
+        .select("accent_color, columns, show_leaderboard")
         .eq("id", fromBoardId)
         .maybeSingle();
       if (src) {
         accent = src.accent_color as string;
         columns = src.columns as number;
+        showLeaderboard = Boolean(src.show_leaderboard);
       }
       const { data: srcTasks } = await supabase
         .from("tasks")
@@ -110,6 +114,7 @@ export async function POST(request: Request) {
         subtitle: String(body.subtitle ?? "").slice(0, 120),
         accent_color: accent,
         columns,
+        show_leaderboard: showLeaderboard,
         is_active: true,
       })
       .select()
@@ -157,4 +162,10 @@ export async function POST(request: Request) {
 function clampColumns(n: number): number {
   if (!Number.isFinite(n)) return 4;
   return Math.min(6, Math.max(1, Math.round(n)));
+}
+
+// Accept "YYYY-MM-DD" from a date input; anything else clears the deadline.
+function normalizeDate(v: unknown): string | null {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  return v;
 }

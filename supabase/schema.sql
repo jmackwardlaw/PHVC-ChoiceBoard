@@ -15,9 +15,15 @@ create table if not exists boards (
   accent_color text not null default '#1AA0B8',
   columns      int  not null default 4,
   is_active    boolean not null default false,
+  due_date         date,                              -- optional deadline; board locks after this day
+  show_leaderboard boolean not null default false,    -- show the team leaderboard to athletes
   created_at   timestamptz not null default now(),
   archived_at  timestamptz
 );
+
+-- Columns added after the first release; safe to run on an existing database.
+alter table boards add column if not exists due_date date;
+alter table boards add column if not exists show_leaderboard boolean not null default false;
 
 -- Tiles on a board. "position" orders them left-to-right, top-to-bottom.
 create table if not exists tasks (

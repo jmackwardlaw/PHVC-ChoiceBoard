@@ -50,6 +50,20 @@ export async function POST(request: Request) {
   const fileType = body.fileType === "video" ? "video" : "image";
 
   const supabase = createAdminClient();
+
+  // Reject uploads once a board's deadline has passed.
+  const { data: board } = await supabase
+    .from("boards")
+    .select("due_date")
+    .eq("id", boardId)
+    .maybeSingle();
+  if (board?.due_date && isPastDue(board.due_date as string)) {
+    return NextResponse.json(
+      { error: "This board is closed — the deadline has passed." },
+      { status: 403 },
+    );
+  }
+
   const { data, error } = await supabase
     .from("submissions")
     .insert({
@@ -67,4 +81,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save submission." }, { status: 500 });
   }
   return NextResponse.json({ submission: data });
+}
+
+// A board is closed the day AFTER its due date (the due date itself is allowed).
+function isPastDue(dueDate: string): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return today > dueDate;
 }

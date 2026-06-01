@@ -1,9 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 
 type Cell = { athlete: Athlete; task: Task; sub: Submission };
+
+// A tile counts as "done" unless the coach sent it back for a redo.
+const counts = (s: Submission | undefined) => !!s && s.status !== "redo";
 
 export default function Dashboard({
   board,
@@ -28,14 +32,21 @@ export default function Dashboard({
     return map;
   }, [submissions]);
 
+  const pendingCount = useMemo(
+    () => [...byKey.values()].filter((s) => s.status === "submitted").length,
+    [byKey],
+  );
+
   const rows = useMemo(() => {
     return athletes
       .map((a) => {
-        const done = tasks.filter((t) => byKey.has(`${a.id}:${t.id}`)).length;
+        const done = tasks.filter((t) => counts(byKey.get(`${a.id}:${t.id}`))).length;
         return { athlete: a, done };
       })
       .sort((x, y) => y.done - x.done || x.athlete.name.localeCompare(y.athlete.name));
   }, [athletes, tasks, byKey]);
+
+  const daysLeft = useMemo(() => daysUntil(board.due_date), [board.due_date]);
 
   const total = tasks.length;
   const finishedAll = rows.filter((r) => r.done === total && total > 0);
@@ -52,14 +63,49 @@ export default function Dashboard({
           </p>
           <h1 className="font-display text-3xl font-extrabold">{board.title}</h1>
         </div>
+        {board.due_date && <DeadlineChip dueDate={board.due_date} daysLeft={daysLeft} />}
       </div>
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Athletes" value={String(athletes.length)} />
         <Stat label="Tasks per athlete" value={String(total)} />
         <Stat label="Avg completion" value={`${avgPct}%`} accent />
         <Stat label="Finished all" value={String(finishedAll.length)} accent />
+        <Stat label="Needs review" value={String(pendingCount)} />
+      </div>
+
+      {/* Leaderboard */}
+      <div className="mb-6 rounded-2xl border border-line bg-surface p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">
+            🏁 Leaderboard
+          </h2>
+          <span className="text-xs text-muted">
+            {board.show_leaderboard ? "Visible to athletes" : "Coaches only"}
+          </span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted">No athletes yet.</p>
+        ) : (
+          <ol className="space-y-2">
+            {rows.slice(0, 10).map((r, i) => (
+              <li key={r.athlete.id} className="flex items-center gap-3">
+                <span className="w-6 text-center text-base">{medal(i)}</span>
+                <span className="w-40 truncate font-semibold">{r.athlete.name}</span>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-canvas">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${total ? (r.done / total) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="w-12 text-right text-sm font-bold tabular-nums">
+                  {r.done}/{total}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       {/* Finished-all spotlight */}
@@ -130,10 +176,16 @@ export default function Dashboard({
                       {sub ? (
                         <button
                           onClick={() => setViewing({ athlete, task: t, sub })}
-                          title={`View ${athlete.name}'s ${t.title}`}
-                          className="mx-auto flex h-7 w-7 items-center justify-center rounded-md bg-accent text-white transition hover:opacity-80"
+                          title={`${statusLabel(sub.status)} — view ${athlete.name}'s ${t.title}`}
+                          className={`mx-auto flex h-7 w-7 items-center justify-center rounded-md text-white transition hover:opacity-80 ${statusBg(sub.status)}`}
                         >
-                          {sub.file_type === "video" ? "▶" : "✓"}
+                          {sub.status === "redo"
+                            ? "↻"
+                            : sub.file_type === "video"
+                              ? "▶"
+                              : sub.status === "approved"
+                                ? "★"
+                                : "✓"}
                         </button>
                       ) : (
                         <span className="mx-auto block h-7 w-7 rounded-md border border-line" />
@@ -154,9 +206,12 @@ export default function Dashboard({
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-muted">
-        Tap a ✓ or ▶ to view that athlete&apos;s uploaded evidence.
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+        <span>Tap a tile to view evidence &amp; approve.</span>
+        <Legend className="bg-amber-400" label="Submitted" />
+        <Legend className="bg-emerald-500" label="Approved ★" />
+        <Legend className="bg-red-500" label="Needs redo ↻" />
+      </div>
 
       {viewing && <ArtifactModal cell={viewing} onClose={() => setViewing(null)} />}
     </div>
@@ -187,8 +242,11 @@ function Stat({
 }
 
 function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
+  const router = useRouter();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState(cell.sub.status);
+  const [saving, setSaving] = useState<"approved" | "redo" | null>(null);
 
   useEffect(() => {
     fetch(`/api/artifact?path=${encodeURIComponent(cell.sub.file_path)}`)
@@ -196,6 +254,20 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
       .then((j) => (j.url ? setUrl(j.url) : setError(j.error ?? "Could not load.")))
       .catch(() => setError("Could not load."));
   }, [cell]);
+
+  async function setReview(next: "approved" | "redo") {
+    setSaving(next);
+    const res = await fetch("/api/coach/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submissionId: cell.sub.id, status: next }),
+    });
+    setSaving(null);
+    if (res.ok) {
+      setStatus(next);
+      router.refresh();
+    }
+  }
 
   return (
     <div
@@ -241,6 +313,28 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
           </p>
         )}
 
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold text-white ${statusBg(status)}`}>
+            {statusLabel(status)}
+          </span>
+          <div className="ml-auto flex gap-2">
+            <button
+              onClick={() => setReview("redo")}
+              disabled={saving !== null}
+              className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {saving === "redo" ? "…" : "Needs redo ↻"}
+            </button>
+            <button
+              onClick={() => setReview("approved")}
+              disabled={saving !== null}
+              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {saving === "approved" ? "…" : "Approve ★"}
+            </button>
+          </div>
+        </div>
+
         {url && (
           <a
             href={url}
@@ -254,4 +348,63 @@ function ArtifactModal({ cell, onClose }: { cell: Cell; onClose: () => void }) {
       </div>
     </div>
   );
+}
+
+function Legend({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`h-3 w-3 rounded ${className}`} />
+      {label}
+    </span>
+  );
+}
+
+function DeadlineChip({ dueDate, daysLeft }: { dueDate: string; daysLeft: number }) {
+  const closed = daysLeft < 0;
+  const due = new Date(dueDate + "T00:00:00").toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  return (
+    <span
+      className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+        closed
+          ? "bg-red-100 text-red-700"
+          : daysLeft <= 3
+            ? "bg-amber-100 text-amber-800"
+            : "bg-canvas text-muted"
+      }`}
+    >
+      {closed
+        ? `Closed (was due ${due})`
+        : daysLeft === 0
+          ? `Due today (${due})`
+          : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left · due ${due}`}
+    </span>
+  );
+}
+
+function statusBg(status: string): string {
+  if (status === "approved") return "bg-emerald-500";
+  if (status === "redo") return "bg-red-500";
+  return "bg-amber-400";
+}
+
+function statusLabel(status: string): string {
+  if (status === "approved") return "Approved";
+  if (status === "redo") return "Needs redo";
+  return "Submitted";
+}
+
+function medal(i: number): string {
+  return ["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`;
+}
+
+// Whole days from today until the due date (negative = past).
+function daysUntil(dueDate: string | null): number {
+  if (!dueDate) return Infinity;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + "T00:00:00");
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
 }

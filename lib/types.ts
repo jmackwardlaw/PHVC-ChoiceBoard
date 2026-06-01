@@ -5,6 +5,8 @@ export type Board = {
   accent_color: string;
   columns: number;
   is_active: boolean;
+  due_date: string | null;
+  show_leaderboard: boolean;
   created_at: string;
   archived_at: string | null;
 };

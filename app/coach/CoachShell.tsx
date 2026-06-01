@@ -9,7 +9,7 @@ export default function CoachShell({
 }) {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-line bg-surface">
+      <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
           <span className="font-display text-xl font-extrabold">
             PHVC<span className="text-muted"> · Coach</span>

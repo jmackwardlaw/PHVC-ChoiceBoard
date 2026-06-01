@@ -24,6 +24,8 @@ export default function BoardEditor({
   const [subtitle, setSubtitle] = useState(board?.subtitle ?? "");
   const [accent, setAccent] = useState(board?.accent_color ?? "#1aa0b8");
   const [columns, setColumns] = useState(board?.columns ?? 4);
+  const [dueDate, setDueDate] = useState(board?.due_date ?? "");
+  const [showLeaderboard, setShowLeaderboard] = useState(board?.show_leaderboard ?? false);
   const [tiles, setTiles] = useState<Tile[]>(
     tasks.map((t) => ({ id: t.id, title: t.title, category: t.category })),
   );
@@ -76,6 +78,8 @@ export default function BoardEditor({
         subtitle,
         accent_color: accent,
         columns,
+        due_date: dueDate || null,
+        show_leaderboard: showLeaderboard,
         tiles,
       }),
     });
@@ -212,6 +216,30 @@ export default function BoardEditor({
                   className="h-7 w-9 cursor-pointer rounded border border-line"
                 />
               </div>
+            </Field>
+            <Field label="Due date (optional)">
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="input"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Athletes see a countdown; uploads close the day after this date.
+              </p>
+            </Field>
+            <Field label="Team leaderboard">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={showLeaderboard}
+                  onChange={(e) => setShowLeaderboard(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm font-medium">
+                  Show the leaderboard to athletes
+                </span>
+              </label>
             </Field>
           </div>
         </section>

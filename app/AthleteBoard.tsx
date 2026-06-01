@@ -20,6 +20,10 @@ export default function AthleteBoard({
   const [completed, setCompleted] = useState<Record<string, Submission>>({});
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const daysLeft = daysUntil(board.due_date);
+  const locked = daysLeft < 0;
 
   // Restore the last athlete on this device so they don't reselect every visit.
   useEffect(() => {
@@ -66,8 +70,9 @@ export default function AthleteBoard({
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  // A tile counts as done unless the coach sent it back for a redo.
   const doneCount = useMemo(
-    () => tasks.filter((t) => completed[t.id]).length,
+    () => tasks.filter((t) => completed[t.id] && completed[t.id].status !== "redo").length,
     [tasks, completed],
   );
   const allDone = tasks.length > 0 && doneCount === tasks.length;
@@ -97,9 +102,28 @@ export default function AthleteBoard({
             doneCount={doneCount}
             total={tasks.length}
             onSwitch={signOutAthlete}
+            onLeaderboard={board.show_leaderboard ? () => setShowLeaderboard(true) : undefined}
           />
 
           <main className="mx-auto max-w-5xl px-4 pb-24 pt-6">
+            {board.due_date && (
+              <div
+                className={`mb-4 rounded-2xl border px-5 py-3 text-center text-sm font-semibold ${
+                  locked
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : daysLeft <= 3
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : "border-line bg-surface text-muted"
+                }`}
+              >
+                {locked
+                  ? "⏰ This board is closed — the deadline has passed."
+                  : daysLeft === 0
+                    ? "⏰ Last day! Uploads close after today."
+                    : `⏰ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left to finish.`}
+              </div>
+            )}
+
             {allDone && (
               <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-center">
                 <p className="text-lg font-bold text-emerald-700">
@@ -111,20 +135,26 @@ export default function AthleteBoard({
             <div className="board-grid gap-3" style={{ ["--cols" as string]: board.columns }}>
               {tasks.map((task) => {
                 const sub = completed[task.id];
+                const redo = sub?.status === "redo";
+                const done = sub && !redo;
+                const tappable = !locked || !done;
                 return (
                   <button
                     key={task.id}
-                    onClick={() => setActiveTask(task)}
-                    className={`group relative flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
-                      sub
-                        ? "border-transparent bg-accent text-white shadow-sm"
-                        : "border-line bg-surface hover:border-accent hover:shadow-sm"
+                    onClick={() => tappable && setActiveTask(task)}
+                    disabled={!tappable}
+                    className={`group relative flex min-h-[124px] flex-col rounded-2xl border p-4 text-left transition active:scale-[0.98] disabled:cursor-default ${
+                      redo
+                        ? "border-red-300 bg-red-50"
+                        : done
+                          ? "border-transparent bg-accent text-white shadow-sm"
+                          : "border-line bg-surface hover:border-accent hover:shadow-sm"
                     }`}
                   >
                     {task.category && (
                       <span
                         className={`text-[11px] font-bold uppercase tracking-wide ${
-                          sub ? "text-white/80" : "text-accent"
+                          done ? "text-white/80" : redo ? "text-red-600" : "text-accent"
                         }`}
                       >
                         {task.category}
@@ -134,12 +164,19 @@ export default function AthleteBoard({
                       {task.title}
                     </span>
                     <span className="mt-auto pt-3 text-sm font-medium">
-                      {sub ? (
+                      {redo ? (
+                        <span className="font-semibold text-red-600">
+                          ↻ Coach asked for a redo — tap to re-upload
+                        </span>
+                      ) : sub ? (
                         <span className="inline-flex items-center gap-1.5">
-                          <CheckIcon /> Submitted
+                          <CheckIcon />{" "}
+                          {sub.status === "approved" ? "Approved ★" : "Submitted"}
                         </span>
                       ) : loadingSubs ? (
                         <span className="text-muted">…</span>
+                      ) : locked ? (
+                        <span className="text-muted">Closed</span>
                       ) : (
                         <span className="text-muted group-hover:text-accent">
                           Tap to upload ↑
@@ -151,6 +188,10 @@ export default function AthleteBoard({
               })}
             </div>
           </main>
+
+          {showLeaderboard && (
+            <LeaderboardModal board={board} onClose={() => setShowLeaderboard(false)} />
+          )}
         </>
       )}
 
@@ -300,12 +341,14 @@ function Header({
   doneCount,
   total,
   onSwitch,
+  onLeaderboard,
 }: {
   board: Board;
   athlete: Athlete;
   doneCount: number;
   total: number;
   onSwitch: () => void;
+  onLeaderboard?: () => void;
 }) {
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   return (
@@ -326,16 +369,96 @@ function Header({
           <p className="text-sm font-semibold">
             Hi, {athlete.name.split(" ")[0]} 👋
           </p>
-          <button
-            onClick={onSwitch}
-            className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25"
-          >
-            Not you? Switch
-          </button>
+          <div className="flex items-center gap-2">
+            {onLeaderboard && (
+              <button
+                onClick={onLeaderboard}
+                className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25"
+              >
+                🏁 Leaderboard
+              </button>
+            )}
+            <button
+              onClick={onSwitch}
+              className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold hover:bg-white/25"
+            >
+              Not you? Switch
+            </button>
+          </div>
         </div>
       </div>
     </header>
   );
+}
+
+function LeaderboardModal({ board, onClose }: { board: Board; onClose: () => void }) {
+  const [rows, setRows] = useState<{ name: string; done: number }[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/leaderboard?board=${board.id}`)
+      .then((r) => r.json())
+      .then((j) => {
+        setRows(j.rows ?? []);
+        setTotal(j.total ?? 0);
+      })
+      .finally(() => setLoading(false));
+  }, [board.id]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
+      onClick={onClose}
+      style={{ ["--accent" as string]: board.accent_color }}
+    >
+      <div
+        className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface p-6 sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold">🏁 Team leaderboard</h3>
+          <button onClick={onClose} className="text-2xl leading-none text-muted">
+            ×
+          </button>
+        </div>
+        {loading ? (
+          <p className="py-6 text-center text-muted">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="py-6 text-center text-muted">No progress yet.</p>
+        ) : (
+          <ol className="space-y-2">
+            {rows.map((r, i) => (
+              <li key={r.name} className="flex items-center gap-3">
+                <span className="w-6 text-center text-base">
+                  {["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`}
+                </span>
+                <span className="flex-1 truncate font-semibold">{r.name}</span>
+                <div className="h-2.5 w-24 overflow-hidden rounded-full bg-canvas">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${total ? (r.done / total) * 100 : 0}%` }}
+                  />
+                </div>
+                <span className="w-12 text-right text-sm font-bold tabular-nums">
+                  {r.done}/{total}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Whole days from today until the board's due date (negative = closed).
+function daysUntil(dueDate: string | null): number {
+  if (!dueDate) return Infinity;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + "T00:00:00");
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
 }
 
 function Ring({ pct, label }: { pct: number; label: string }) {
@@ -457,11 +580,15 @@ function UploadSheet({
           </button>
         </div>
 
-        {existing && (
+        {existing?.status === "redo" ? (
+          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            Your coach asked for a redo on this one. Upload a new photo or video.
+          </p>
+        ) : existing ? (
           <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             You already submitted this. Uploading again adds a new one.
           </p>
-        )}
+        ) : null}
 
         <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line bg-canvas px-4 py-8 text-center transition hover:border-accent">
           <input
