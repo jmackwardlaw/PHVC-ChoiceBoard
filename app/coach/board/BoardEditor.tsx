@@ -1,0 +1,315 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { Board, Task } from "@/lib/types";
+
+type Tile = { id?: string; title: string; category: string };
+
+const PRESETS = ["#1aa0b8", "#2563eb", "#7c3aed", "#db2777", "#e11d48", "#ea580c", "#16a34a", "#0e1726"];
+
+export default function BoardEditor({
+  board,
+  tasks,
+  allBoards,
+}: {
+  board: Board | null;
+  tasks: Task[];
+  allBoards: Board[];
+}) {
+  const router = useRouter();
+
+  const [title, setTitle] = useState(board?.title ?? "Conditioning Board");
+  const [subtitle, setSubtitle] = useState(board?.subtitle ?? "");
+  const [accent, setAccent] = useState(board?.accent_color ?? "#1aa0b8");
+  const [columns, setColumns] = useState(board?.columns ?? 4);
+  const [tiles, setTiles] = useState<Tile[]>(
+    tasks.map((t) => ({ id: t.id, title: t.title, category: t.category })),
+  );
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const archived = allBoards.filter((b) => !b.is_active);
+
+  function updateTile(i: number, patch: Partial<Tile>) {
+    setTiles((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  }
+  function addTile() {
+    setTiles((prev) => [...prev, { title: "New task", category: "" }]);
+  }
+  function removeTile(i: number) {
+    setTiles((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function move(i: number, dir: -1 | 1) {
+    setTiles((prev) => {
+      const next = [...prev];
+      const j = i + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  }
+
+  async function save() {
+    if (!board) return;
+    setSaving(true);
+    setSaved(false);
+    await fetch("/api/coach/board", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save",
+        boardId: board.id,
+        title,
+        subtitle,
+        accent_color: accent,
+        columns,
+        tiles,
+      }),
+    });
+    setSaving(false);
+    setSaved(true);
+    router.refresh();
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  async function startNewMonth() {
+    const newTitle = prompt("Title for the new board?", title);
+    if (newTitle === null) return;
+    const newSub = prompt("Month / subtitle? (e.g. July 2026)", "");
+    const res = await fetch("/api/coach/board", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "clone-new",
+        fromBoardId: board?.id,
+        title: newTitle,
+        subtitle: newSub ?? "",
+      }),
+    });
+    if (res.ok) router.refresh();
+  }
+
+  async function activate(boardId: string) {
+    if (!confirm("Make this the active board athletes see?")) return;
+    const res = await fetch("/api/coach/board", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "activate", boardId }),
+    });
+    if (res.ok) router.refresh();
+  }
+
+  if (!board) {
+    return (
+      <div className="rounded-3xl border border-line bg-surface p-10 text-center">
+        <h1 className="font-display text-2xl font-extrabold">No board yet</h1>
+        <p className="mt-2 text-muted">Create your first board to get started.</p>
+        <button
+          onClick={startNewMonth}
+          className="mt-5 rounded-full bg-ink px-5 py-2.5 font-semibold text-white"
+        >
+          Create a board
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ["--accent" as string]: accent }} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      {/* Editor column */}
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="mb-4 font-display text-xl font-extrabold">Board details</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Title">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="input"
+              />
+            </Field>
+            <Field label="Month / subtitle">
+              <input
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                placeholder="June 2026"
+                className="input"
+              />
+            </Field>
+            <Field label="Columns">
+              <input
+                type="number"
+                min={1}
+                max={6}
+                value={columns}
+                onChange={(e) => setColumns(Number(e.target.value))}
+                className="input"
+              />
+            </Field>
+            <Field label="Accent color">
+              <div className="flex flex-wrap items-center gap-2">
+                {PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setAccent(c)}
+                    className={`h-7 w-7 rounded-full ring-2 ring-offset-2 ${
+                      accent.toLowerCase() === c ? "ring-ink" : "ring-transparent"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    aria-label={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={accent}
+                  onChange={(e) => setAccent(e.target.value)}
+                  className="h-7 w-9 cursor-pointer rounded border border-line"
+                />
+              </div>
+            </Field>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-xl font-extrabold">
+              Tiles ({tiles.length})
+            </h2>
+            <button
+              onClick={addTile}
+              className="rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-white"
+            >
+              + Add tile
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {tiles.map((tile, i) => (
+              <div
+                key={tile.id ?? `new-${i}`}
+                className="flex items-center gap-2 rounded-xl border border-line p-2"
+              >
+                <span className="w-6 text-center text-xs font-bold text-muted">{i + 1}</span>
+                <input
+                  value={tile.title}
+                  onChange={(e) => updateTile(i, { title: e.target.value })}
+                  placeholder="Task title"
+                  className="input flex-1"
+                />
+                <input
+                  value={tile.category}
+                  onChange={(e) => updateTile(i, { category: e.target.value })}
+                  placeholder="Category"
+                  className="input w-32"
+                />
+                <div className="flex flex-col">
+                  <button onClick={() => move(i, -1)} className="px-1 text-muted hover:text-ink">▲</button>
+                  <button onClick={() => move(i, 1)} className="px-1 text-muted hover:text-ink">▼</button>
+                </div>
+                <button
+                  onClick={() => removeTile(i)}
+                  className="rounded-lg px-2 py-1 text-sm font-semibold text-red-500 hover:bg-red-50"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="rounded-full bg-accent px-6 py-3 font-bold text-white disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+          {saved && <span className="text-sm font-semibold text-emerald-600">Saved ✓</span>}
+        </div>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="font-display text-xl font-extrabold">Start a new month</h2>
+          <p className="mt-1 mb-3 text-sm text-muted">
+            Copies these tiles into a brand-new board and archives the current one.
+            Past submissions stay saved with the old board.
+          </p>
+          <button
+            onClick={startNewMonth}
+            className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+          >
+            Start new month →
+          </button>
+        </section>
+
+        {archived.length > 0 && (
+          <section className="rounded-2xl border border-line bg-surface p-5">
+            <h2 className="font-display text-xl font-extrabold">Past boards</h2>
+            <div className="mt-3 space-y-2">
+              {archived.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between rounded-xl border border-line px-4 py-2.5"
+                >
+                  <div>
+                    <p className="font-semibold">{b.title}</p>
+                    <p className="text-xs text-muted">{b.subtitle}</p>
+                  </div>
+                  <button
+                    onClick={() => activate(b.id)}
+                    className="rounded-full border border-line px-3 py-1 text-sm font-semibold hover:bg-canvas"
+                  >
+                    Make active
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Live preview */}
+      <div className="lg:sticky lg:top-6 lg:self-start">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
+          Live preview
+        </p>
+        <div className="overflow-hidden rounded-2xl border border-line">
+          <div className="bg-accent px-4 py-5 text-center text-white">
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+              {subtitle || "Choice Board"}
+            </p>
+            <h3 className="font-display text-2xl font-extrabold">{title}</h3>
+          </div>
+          <div
+            className="board-grid gap-2 bg-canvas p-3"
+            style={{ ["--cols" as string]: columns }}
+          >
+            {tiles.map((t, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-line bg-surface p-2.5"
+              >
+                {t.category && (
+                  <p className="text-[9px] font-bold uppercase text-accent">{t.category}</p>
+                )}
+                <p className="text-xs font-bold leading-tight">{t.title}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <style>{`.input{width:100%;border-radius:0.6rem;border:1px solid var(--color-line);background:var(--color-canvas);padding:0.55rem 0.75rem;font-size:0.9rem;outline:none}.input:focus{border-color:var(--accent)}`}</style>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-semibold text-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
