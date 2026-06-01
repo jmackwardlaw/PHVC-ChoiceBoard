@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCoach } from "@/lib/coach";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { presignDownload } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +18,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing path." }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.storage
-    .from("artifacts")
-    .createSignedUrl(path, 60 * 60); // 1 hour
-
-  if (error || !data) {
+  try {
+    const url = await presignDownload(path);
+    return NextResponse.json({ url });
+  } catch {
     return NextResponse.json({ error: "Could not sign URL." }, { status: 500 });
   }
-  return NextResponse.json({ url: data.signedUrl });
 }

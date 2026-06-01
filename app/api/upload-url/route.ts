@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { presignUpload } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
 // Athletes call this to get a one-time signed URL, then upload their photo/video
-// directly to storage from the browser. This keeps large video uploads off our
-// serverless functions (which have a small request-body limit).
+// directly to R2 storage from the browser. This keeps large video uploads off
+// our serverless functions (which have a small request-body limit).
 export async function POST(request: Request) {
   let body: { boardId?: string; athleteId?: string; taskId?: string; fileName?: string };
   try {
@@ -36,13 +37,10 @@ export async function POST(request: Request) {
     .slice(0, 5);
   const path = `${boardId}/${athleteId}/${taskId}-${Date.now()}.${ext}`;
 
-  const { data, error } = await supabase.storage
-    .from("artifacts")
-    .createSignedUploadUrl(path);
-
-  if (error || !data) {
+  try {
+    const url = await presignUpload(path);
+    return NextResponse.json({ path, url });
+  } catch {
     return NextResponse.json({ error: "Could not create upload URL." }, { status: 500 });
   }
-
-  return NextResponse.json({ path: data.path, token: data.token });
 }

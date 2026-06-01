@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 import { softBreak } from "./softBreak";
-import { compressVideo } from "./compressVideo";
 
 const STORAGE_KEY = "phvc-athlete";
 
-// Keep in sync with the Supabase "artifacts" bucket file-size limit.
-// Free plan caps uploads at 50 MB; raise this if you raise the bucket limit.
-const MAX_UPLOAD_MB = 50;
+// Sanity bound to catch an accidental huge upload — R2 has no hard cap, so this
+// is generous enough for a couple-minute phone video.
+const MAX_UPLOAD_MB = 500;
 
 export default function AthleteBoard({
   board,
@@ -532,36 +530,20 @@ function UploadSheet({
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [compressPct, setCompressPct] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   async function upload() {
     if (!file) return;
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(0);
+      setError(
+        `That file is ${mb} MB, which is too large. Record a shorter clip or lower the video quality (in your camera settings) and try again.`,
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      // Phone videos can easily blow past the storage cap. Try to shrink them
-      // in the browser first; on any failure this returns the original.
-      let toUpload = file;
-      if (
-        file.type.startsWith("video") &&
-        file.size > MAX_UPLOAD_MB * 1024 * 1024
-      ) {
-        setCompressPct(0);
-        toUpload = await compressVideo(file, {
-          onProgress: (f) => setCompressPct(Math.round(f * 100)),
-        });
-        setCompressPct(null);
-      }
-
-      if (toUpload.size > MAX_UPLOAD_MB * 1024 * 1024) {
-        const mb = (toUpload.size / (1024 * 1024)).toFixed(0);
-        setError(
-          `That file is ${mb} MB — the max is ${MAX_UPLOAD_MB} MB. Record a shorter clip or lower the video quality (in your camera settings) and try again.`,
-        );
-        return;
-      }
-
       const urlRes = await fetch("/api/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -569,23 +551,16 @@ function UploadSheet({
           boardId: board.id,
           athleteId: athlete.id,
           taskId: task.id,
-          fileName: toUpload.name,
+          fileName: file.name,
         }),
       });
       const urlJson = await urlRes.json();
       if (!urlRes.ok) throw new Error(urlJson.error ?? "Upload failed.");
 
-      const supabase = createSupabaseBrowserClient();
-      const { error: upErr } = await supabase.storage
-        .from("artifacts")
-        .uploadToSignedUrl(urlJson.path, urlJson.token, toUpload);
-      if (upErr) {
-        const msg = (upErr as { message?: string }).message ?? "";
-        throw new Error(
-          /exceed|maximum|size|too large|413|payload/i.test(msg)
-            ? `That file is too large to upload (max ${MAX_UPLOAD_MB} MB). Record a shorter clip or lower the video quality and try again.`
-            : `Could not upload the file. ${msg || "Try again."}`,
-        );
+      // Upload straight to R2 with the one-time presigned URL.
+      const putRes = await fetch(urlJson.url, { method: "PUT", body: file });
+      if (!putRes.ok) {
+        throw new Error("Could not upload the file. Please try again.");
       }
 
       const subRes = await fetch("/api/submissions", {
@@ -596,7 +571,7 @@ function UploadSheet({
           athleteId: athlete.id,
           taskId: task.id,
           filePath: urlJson.path,
-          fileType: toUpload.type.startsWith("video") ? "video" : "image",
+          fileType: file.type.startsWith("video") ? "video" : "image",
           note,
         }),
       });
@@ -607,7 +582,6 @@ function UploadSheet({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
-      setCompressPct(null);
       setBusy(false);
     }
   }
@@ -679,11 +653,7 @@ function UploadSheet({
           disabled={!file || busy}
           className="mt-4 w-full rounded-xl bg-accent py-3.5 font-bold text-white disabled:opacity-50"
         >
-          {compressPct !== null
-            ? `Compressing video… ${compressPct}%`
-            : busy
-              ? "Uploading…"
-              : "Submit evidence"}
+          {busy ? "Uploading…" : "Submit evidence"}
         </button>
       </div>
     </div>

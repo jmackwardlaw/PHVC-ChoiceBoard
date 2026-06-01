@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCoach } from "@/lib/coach";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteObjects } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
       .map((s) => s.file_path as string)
       .filter(Boolean);
     if (paths.length) {
-      await supabase.storage.from("artifacts").remove(paths);
+      await deleteObjects(paths);
     }
 
     const { error } = await supabase.from("boards").delete().eq("id", boardId);
