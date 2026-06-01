@@ -261,8 +261,7 @@ function BoardView({
   return (
     <>
       <p className="mb-3 text-sm text-muted">
-        How many of your {athleteCount} athletes have finished each tile. Tap a
-        tile to see who&apos;s done and who&apos;s missing.
+        {`How many of your ${athleteCount} athletes have finished each tile. Tap a tile to see who's done and who's missing.`}
       </p>
       <div className="board-grid gap-3" style={{ ["--cols" as string]: board.columns }}>
         {tasks.map((t, i) => {
