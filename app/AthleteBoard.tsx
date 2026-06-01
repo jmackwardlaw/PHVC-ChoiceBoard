@@ -337,9 +337,9 @@ function NamePicker({
         <div className="mt-6 text-center">
           <a
             href="/coach"
-            className="text-sm font-semibold text-muted transition hover:text-ink hover:underline"
+            className="inline-block rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white shadow-card transition hover:opacity-90 active:scale-[0.98]"
           >
-            Coach login →
+            Coach Login
           </a>
         </div>
       </div>
