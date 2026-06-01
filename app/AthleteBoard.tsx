@@ -7,6 +7,10 @@ import { softBreak } from "./softBreak";
 
 const STORAGE_KEY = "phvc-athlete";
 
+// Keep in sync with the Supabase "artifacts" bucket file-size limit.
+// Free plan caps uploads at 50 MB; raise this if you raise the bucket limit.
+const MAX_UPLOAD_MB = 50;
+
 export default function AthleteBoard({
   board,
   tasks,
@@ -531,6 +535,13 @@ function UploadSheet({
 
   async function upload() {
     if (!file) return;
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(0);
+      setError(
+        `That file is ${mb} MB — the max is ${MAX_UPLOAD_MB} MB. Record a shorter clip or lower the video quality (in your camera settings) and try again.`,
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -551,7 +562,14 @@ function UploadSheet({
       const { error: upErr } = await supabase.storage
         .from("artifacts")
         .uploadToSignedUrl(urlJson.path, urlJson.token, file);
-      if (upErr) throw new Error("Could not upload the file. Try again.");
+      if (upErr) {
+        const msg = (upErr as { message?: string }).message ?? "";
+        throw new Error(
+          /exceed|maximum|size|too large|413|payload/i.test(msg)
+            ? `That file is too large to upload (max ${MAX_UPLOAD_MB} MB). Record a shorter clip or lower the video quality and try again.`
+            : `Could not upload the file. ${msg || "Try again."}`,
+        );
+      }
 
       const subRes = await fetch("/api/submissions", {
         method: "POST",
