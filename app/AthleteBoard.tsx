@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
+import Logo from "./Logo";
 
 const STORAGE_KEY = "phvc-athlete";
 
@@ -259,7 +260,8 @@ function NamePicker({
       className="flex min-h-screen flex-col"
       style={{ ["--accent" as string]: board.accent_color }}
     >
-      <div className="accent-header px-6 pb-10 pt-14 text-center text-white shadow-sm">
+      <div className="accent-header flex flex-col items-center px-6 pb-10 pt-12 text-center text-white shadow-sm">
+        <Logo variant="badge" size={64} className="mb-3" />
         <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
           {board.subtitle || "Choice Board"}
         </p>
@@ -353,7 +355,8 @@ function Header({
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   return (
     <header className="accent-header text-white shadow-sm">
-      <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-4">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-4">
+        <Logo variant="badge" size={40} className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
             {board.subtitle || "Choice Board"}

@@ -14,7 +14,7 @@ export default async function QRPage() {
       <QRPoster
         title={board?.title ?? "Choice Board"}
         subtitle={board?.subtitle ?? ""}
-        accent={board?.accent_color ?? "#1aa0b8"}
+        accent={board?.accent_color ?? "#e20706"}
       />
     </CoachShell>
   );

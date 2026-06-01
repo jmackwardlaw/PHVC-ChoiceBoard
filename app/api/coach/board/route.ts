@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       .update({
         title: String(body.title ?? "Choice Board").slice(0, 120),
         subtitle: String(body.subtitle ?? "").slice(0, 120),
-        accent_color: String(body.accent_color ?? "#1aa0b8").slice(0, 9),
+        accent_color: String(body.accent_color ?? "#e20706").slice(0, 9),
         columns: clampColumns(Number(body.columns)),
         due_date: normalizeDate(body.due_date),
         show_leaderboard: Boolean(body.show_leaderboard),
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   if (action === "clone-new") {
     const fromBoardId = body.fromBoardId as string | undefined;
 
-    let accent = "#1aa0b8";
+    let accent = "#e20706";
     let columns = 4;
     let showLeaderboard = false;
     let tiles: Tile[] = [];

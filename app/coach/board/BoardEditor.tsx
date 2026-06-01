@@ -7,7 +7,7 @@ import Modal from "../Modal";
 
 type Tile = { id?: string; title: string; category: string };
 
-const PRESETS = ["#1aa0b8", "#2563eb", "#7c3aed", "#db2777", "#e11d48", "#ea580c", "#16a34a", "#0e1726"];
+const PRESETS = ["#e20706", "#242424", "#2563eb", "#7c3aed", "#db2777", "#e11d48", "#ea580c", "#16a34a"];
 
 export default function BoardEditor({
   board,
@@ -22,7 +22,7 @@ export default function BoardEditor({
 
   const [title, setTitle] = useState(board?.title ?? "Conditioning Board");
   const [subtitle, setSubtitle] = useState(board?.subtitle ?? "");
-  const [accent, setAccent] = useState(board?.accent_color ?? "#1aa0b8");
+  const [accent, setAccent] = useState(board?.accent_color ?? "#e20706");
   const [columns, setColumns] = useState(board?.columns ?? 4);
   const [dueDate, setDueDate] = useState(board?.due_date ?? "");
   const [showLeaderboard, setShowLeaderboard] = useState(board?.show_leaderboard ?? false);

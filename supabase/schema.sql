@@ -12,7 +12,7 @@ create table if not exists boards (
   id           uuid primary key default gen_random_uuid(),
   title        text not null default 'Conditioning Board',
   subtitle     text not null default '',          -- e.g. "June 2026"
-  accent_color text not null default '#1AA0B8',
+  accent_color text not null default '#E20706',
   columns      int  not null default 4,
   is_active    boolean not null default false,
   due_date         date,                              -- optional deadline; board locks after this day

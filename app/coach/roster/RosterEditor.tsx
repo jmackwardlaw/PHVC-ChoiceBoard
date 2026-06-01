@@ -38,7 +38,17 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div>
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-extrabold uppercase tracking-tight">
+          Roster
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          Add, rename, or deactivate the athletes who appear on the board.
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
       <section className="rounded-2xl border border-line bg-surface p-5 lg:sticky lg:top-6 lg:self-start">
         <h2 className="font-display text-xl font-extrabold">Add athletes</h2>
         <div className="mt-3 flex gap-2">
@@ -131,6 +141,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
           </div>
         </Modal>
       )}
+      </div>
     </div>
   );
 }

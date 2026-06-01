@@ -1,4 +1,5 @@
 import CoachNav from "./CoachNav";
+import Logo from "../Logo";
 
 export default function CoachShell({
   email,
@@ -11,8 +12,11 @@ export default function CoachShell({
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
-          <span className="font-display text-xl font-extrabold">
-            PHVC<span className="text-muted"> · Coach</span>
+          <span className="flex items-center gap-2.5">
+            <Logo size={34} />
+            <span className="font-display text-xl font-extrabold uppercase tracking-tight">
+              PHVC<span className="font-semibold text-muted"> Coach</span>
+            </span>
           </span>
           <CoachNav />
           <div className="ml-auto flex items-center gap-3">
