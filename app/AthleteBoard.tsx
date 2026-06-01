@@ -372,7 +372,7 @@ function Header({
         <img
           src="/taking-it-back-white.svg"
           alt="Palmetto — Taking It Back"
-          className="h-14 w-auto shrink-0 sm:h-16"
+          className="h-20 w-auto shrink-0 sm:h-24"
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/80">
