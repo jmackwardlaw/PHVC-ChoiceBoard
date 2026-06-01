@@ -112,9 +112,9 @@ export default function AthleteBoard({
               <div
                 className={`mb-4 rounded-2xl border px-5 py-3 text-center text-sm font-semibold ${
                   locked
-                    ? "border-red-500/40 bg-red-500/10 text-red-300"
+                    ? "border-red-200 bg-red-50 text-red-700"
                     : daysLeft <= 3
-                      ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
                       : "border-line bg-surface text-muted"
                 }`}
               >
@@ -127,8 +127,8 @@ export default function AthleteBoard({
             )}
 
             {allDone && (
-              <div className="mb-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-center">
-                <p className="text-lg font-bold text-emerald-300">
+              <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-center">
+                <p className="text-lg font-bold text-emerald-700">
                   🎉 You finished all {tasks.length} tasks. Way to go!
                 </p>
               </div>
@@ -148,7 +148,7 @@ export default function AthleteBoard({
                     style={{ ["--i" as string]: i }}
                     className={`reveal group relative flex min-h-[150px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition active:scale-[0.98] disabled:cursor-default ${
                       redo
-                        ? "border-red-500/50 bg-red-500/10 shadow-card"
+                        ? "border-red-300 bg-red-50 shadow-card"
                         : done
                           ? "tile-done border-transparent text-white shadow-lift"
                           : "tile border-line shadow-card hover:-translate-y-1 hover:border-accent hover:shadow-lift"
@@ -157,7 +157,7 @@ export default function AthleteBoard({
                     {task.category && (
                       <span
                         className={`font-race text-xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
-                          done ? "text-white" : redo ? "text-red-300" : "text-accent"
+                          done ? "text-white" : redo ? "text-red-600" : "text-accent"
                         }`}
                       >
                         {task.category}
@@ -165,7 +165,7 @@ export default function AthleteBoard({
                     )}
                     <span
                       className={`mt-2 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${
-                        done ? "text-white/90" : redo ? "text-red-200" : "text-ink/75"
+                        done ? "text-white/90" : redo ? "text-red-700" : "text-ink/75"
                       }`}
                     >
                       {softBreak(task.title)}
@@ -176,7 +176,7 @@ export default function AthleteBoard({
                       }`}
                     >
                       {redo ? (
-                        <span className="font-semibold text-red-300">
+                        <span className="font-semibold text-red-600">
                           ↻ Coach asked for a redo — tap to re-upload
                         </span>
                       ) : sub ? (
@@ -594,11 +594,11 @@ function UploadSheet({
         </div>
 
         {existing?.status === "redo" ? (
-          <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             Your coach asked for a redo on this one. Upload a new photo or video.
           </p>
         ) : existing ? (
-          <p className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             You already submitted this. Uploading again adds a new one.
           </p>
         ) : null}

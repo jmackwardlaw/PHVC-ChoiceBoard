@@ -32,7 +32,7 @@ export default async function CoachHome({
           <p className="mt-2 text-muted">Create this month&apos;s board to get started.</p>
           <Link
             href="/coach/board"
-            className="mt-5 inline-block rounded-full bg-accent px-5 py-2.5 font-semibold text-white shadow-card hover:opacity-90"
+            className="mt-5 inline-block rounded-full bg-ink px-5 py-2.5 font-semibold text-white"
           >
             Set up a board
           </Link>

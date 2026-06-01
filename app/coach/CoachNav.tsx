@@ -22,7 +22,7 @@ export default function CoachNav() {
             href={l.href}
             className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
               active
-                ? "bg-accent text-white shadow-card"
+                ? "bg-ink text-white"
                 : "text-muted hover:bg-canvas hover:text-ink"
             }`}
           >

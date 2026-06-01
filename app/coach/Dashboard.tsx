@@ -166,7 +166,7 @@ export default function Dashboard({
             key={v}
             onClick={() => setView(v)}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              view === v ? "bg-accent text-white shadow-card" : "text-muted hover:text-ink"
+              view === v ? "bg-ink text-white" : "text-muted hover:text-ink"
             }`}
           >
             {label}
@@ -799,7 +799,7 @@ function Stat({
         accent
           ? "border-transparent bg-accent text-white"
           : highlight
-            ? "border-amber-500/40 bg-amber-500/10"
+            ? "border-amber-300 bg-amber-50"
             : "border-line bg-surface"
       }`}
     >
@@ -832,7 +832,7 @@ function Sheet({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -894,7 +894,7 @@ function ArtifactModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
       onClick={onClose}
     >
       <div
@@ -935,7 +935,7 @@ function ArtifactModal({
                   onUnmark(cell.sub.id);
                   onClose();
                 }}
-                className="rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/15"
+                className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
               >
                 Undo · mark not done
               </button>
@@ -943,7 +943,7 @@ function ArtifactModal({
           </>
         ) : (
           <>
-            <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/30">
+            <div className="flex min-h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-black/5">
               {error ? (
                 <p className="p-6 text-sm text-red-600">{error}</p>
               ) : !url ? (
@@ -968,7 +968,7 @@ function ArtifactModal({
                 <button
                   onClick={() => setReview("redo")}
                   disabled={saving !== null}
-                  className="rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/15 disabled:opacity-50"
+                  className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
                   {saving === "redo" ? "…" : "Needs redo ↻"}
                 </button>
@@ -1018,9 +1018,9 @@ function DeadlineChip({ dueDate, daysLeft }: { dueDate: string; daysLeft: number
     <span
       className={`rounded-full px-3 py-1.5 text-sm font-bold ${
         closed
-          ? "bg-red-500/15 text-red-300"
+          ? "bg-red-100 text-red-700"
           : daysLeft <= 3
-            ? "bg-amber-500/15 text-amber-300"
+            ? "bg-amber-100 text-amber-800"
             : "bg-canvas text-muted"
       }`}
     >

@@ -62,7 +62,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
           <button
             onClick={addOne}
             disabled={busy}
-            className="rounded-xl bg-accent px-4 font-semibold text-white disabled:opacity-50"
+            className="rounded-xl bg-ink px-4 font-semibold text-white disabled:opacity-50"
           >
             Add
           </button>
@@ -86,7 +86,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
             <button
               onClick={addBulk}
               disabled={busy}
-              className="mt-2 w-full rounded-xl bg-accent py-2.5 font-semibold text-white disabled:opacity-50"
+              className="mt-2 w-full rounded-xl bg-ink py-2.5 font-semibold text-white disabled:opacity-50"
             >
               Add all
             </button>
@@ -134,7 +134,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
                 setToDelete(null);
                 await call({ action: "delete", id: a.id });
               }}
-              className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white shadow-card hover:bg-red-500"
+              className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white hover:bg-red-700"
             >
               Remove
             </button>
@@ -207,7 +207,7 @@ function RosterRow({
       <button
         onClick={onRequestDelete}
         disabled={busy}
-        className="rounded-lg px-2 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/15"
+        className="rounded-lg px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
       >
         Delete
       </button>

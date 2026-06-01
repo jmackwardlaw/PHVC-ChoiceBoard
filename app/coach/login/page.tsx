@@ -40,7 +40,7 @@ export default async function CoachLogin({
           </p>
 
           {message && (
-            <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
               {message}
             </p>
           )}

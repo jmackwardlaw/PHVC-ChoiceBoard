@@ -16,7 +16,7 @@ export default async function Home() {
         </p>
         <Link
           href="/coach"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-card hover:opacity-90"
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
         >
           Coach login
         </Link>
