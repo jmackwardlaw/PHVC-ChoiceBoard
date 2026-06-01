@@ -4,8 +4,8 @@
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
 
-  /* Palmetto Athletics palette: Red #e20706, Dark Grey #242424, White. */
-  --color-ink: #242424;
+  /* Palmetto Athletics palette: Red #e20706, Dark Grey, White. */
+  --color-ink: #3a3a3c;
   --color-muted: #6b6b6f;
   --color-line: #dfe1e7;
   --color-surface: #ffffff;

@@ -273,7 +273,7 @@ function NamePicker({
         </h1>
       </div>
 
-      <div className="relative z-10 mx-auto -mt-7 w-full max-w-md flex-1 px-5">
+      <div className="relative z-10 mx-auto mt-8 w-full max-w-md flex-1 px-5 pb-10">
         <div className="rounded-3xl border border-line bg-surface p-6 shadow-lift">
           <h2 className="text-lg font-bold">Who are you?</h2>
           <p className="mb-3 text-sm text-muted">
@@ -332,6 +332,15 @@ function NamePicker({
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <a
+            href="/coach"
+            className="text-sm font-semibold text-muted transition hover:text-ink hover:underline"
+          >
+            Coach login →
+          </a>
         </div>
       </div>
     </div>
