@@ -35,8 +35,11 @@ export async function POST(request: Request) {
   }
 
   if (action === "add-bulk") {
+    // Split on line breaks, tabs, commas, and semicolons so any paste shape
+    // works — a column of cells (newlines), a row of cells (tabs), or a
+    // comma/semicolon list. Spaces are preserved so full names stay intact.
     const names = String(body.names ?? "")
-      .split("\n")
+      .split(/[\n\r\t,;]+/)
       .map((n) => n.trim())
       .filter((n) => n.length >= 2)
       .slice(0, 200);

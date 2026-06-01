@@ -12,29 +12,39 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
   const [showBulk, setShowBulk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toDelete, setToDelete] = useState<Athlete | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   async function call(body: Record<string, unknown>) {
     setBusy(true);
-    await fetch("/api/coach/athletes", {
+    const res = await fetch("/api/coach/athletes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const json = await res.json().catch(() => ({}));
     setBusy(false);
     router.refresh();
+    return { ok: res.ok, json } as { ok: boolean; json: Record<string, unknown> };
   }
 
   async function addOne() {
     if (newName.trim().length < 2) return;
-    await call({ action: "add", name: newName });
-    setNewName("");
+    const { ok, json } = await call({ action: "add", name: newName });
+    if (ok) setNewName("");
+    else setMsg({ text: String(json.error ?? "Could not add."), ok: false });
   }
 
   async function addBulk() {
     if (!bulk.trim()) return;
-    await call({ action: "add-bulk", names: bulk });
-    setBulk("");
-    setShowBulk(false);
+    const { ok, json } = await call({ action: "add-bulk", names: bulk });
+    if (ok) {
+      const n = Number(json.added ?? 0);
+      setMsg({ text: `Added ${n} athlete${n === 1 ? "" : "s"}.`, ok: true });
+      setBulk("");
+      setShowBulk(false);
+    } else {
+      setMsg({ text: String(json.error ?? "Could not add names."), ok: false });
+    }
   }
 
   return (
@@ -72,7 +82,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
           onClick={() => setShowBulk((s) => !s)}
           className="mt-3 text-sm font-semibold text-muted hover:text-ink"
         >
-          {showBulk ? "Hide" : "Paste a list (one name per line)"}
+          {showBulk ? "Hide" : "Paste a list (bulk import)"}
         </button>
         {showBulk && (
           <div className="mt-2">
@@ -83,6 +93,10 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
               placeholder={"Jordan Smith\nAva Lee\nMia Garcia"}
               className="w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-ink"
             />
+            <p className="mt-1.5 text-xs text-muted">
+              Paste from a spreadsheet, a list, or anything — names can be on
+              separate lines, in a row, or separated by commas.
+            </p>
             <button
               onClick={addBulk}
               disabled={busy}
@@ -91,6 +105,18 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
               Add all
             </button>
           </div>
+        )}
+
+        {msg && (
+          <p
+            className={`mt-3 rounded-xl px-3 py-2 text-sm font-medium ${
+              msg.ok
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
+            {msg.text}
+          </p>
         )}
       </section>
 
