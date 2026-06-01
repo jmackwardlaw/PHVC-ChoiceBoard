@@ -141,6 +141,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, boardId: newBoard.id });
   }
 
+  // Permanently delete a past board: its uploaded files, then the row
+  // (tasks + submissions cascade away). Refuses to delete the active board.
+  if (action === "delete") {
+    const boardId = body.boardId as string;
+    if (!boardId) return NextResponse.json({ error: "Missing boardId." }, { status: 400 });
+
+    const { data: target } = await supabase
+      .from("boards")
+      .select("is_active")
+      .eq("id", boardId)
+      .maybeSingle();
+
+    if (!target) {
+      return NextResponse.json({ error: "Board not found." }, { status: 404 });
+    }
+    if (target.is_active) {
+      return NextResponse.json(
+        { error: "This board is active. Make another board active first, then delete it." },
+        { status: 400 },
+      );
+    }
+
+    // Remove the uploaded photos/videos from storage so they don't linger.
+    const { data: subs } = await supabase
+      .from("submissions")
+      .select("file_path")
+      .eq("board_id", boardId);
+    const paths = (subs ?? [])
+      .map((s) => s.file_path as string)
+      .filter(Boolean);
+    if (paths.length) {
+      await supabase.storage.from("artifacts").remove(paths);
+    }
+
+    const { error } = await supabase.from("boards").delete().eq("id", boardId);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   // Make a past board the active one again.
   if (action === "activate") {
     const boardId = body.boardId as string;

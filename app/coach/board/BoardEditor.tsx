@@ -43,6 +43,11 @@ export default function BoardEditor({
   const [toActivate, setToActivate] = useState<Board | null>(null);
   const [activating, setActivating] = useState(false);
 
+  // Delete-confirm pop-up card
+  const [toDelete, setToDelete] = useState<Board | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   const archived = allBoards.filter((b) => !b.is_active);
 
   function updateTile(i: number, patch: Partial<Tile>) {
@@ -134,6 +139,35 @@ export default function BoardEditor({
     });
     setActivating(false);
     if (res.ok) window.location.reload();
+  }
+
+  function openDelete(b: Board) {
+    setDeleteError("");
+    setToDelete(b);
+  }
+
+  async function confirmDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/coach/board", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", boardId: toDelete.id }),
+      });
+      if (res.ok) {
+        setToDelete(null);
+        setDeleting(false);
+        router.refresh();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? `Server error (${res.status}).`);
+    } catch {
+      setDeleteError("Network error — check your connection and try again.");
+    }
+    setDeleting(false);
   }
 
   if (!board) {
@@ -319,22 +353,33 @@ export default function BoardEditor({
         {archived.length > 0 && (
           <section className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="font-display text-xl font-extrabold">Past boards</h2>
-            <div className="mt-3 space-y-2">
+            <p className="mt-1 mb-3 text-sm text-muted">
+              Re-activate an old board, or delete one for good.
+            </p>
+            <div className="space-y-2">
               {archived.map((b) => (
                 <div
                   key={b.id}
-                  className="flex items-center justify-between rounded-xl border border-line px-4 py-2.5"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-2.5"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold">{b.title}</p>
                     <p className="text-xs text-muted">{b.subtitle}</p>
                   </div>
-                  <button
-                    onClick={() => setToActivate(b)}
-                    className="rounded-full border border-line px-3 py-1 text-sm font-semibold hover:bg-canvas"
-                  >
-                    Make active
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setToActivate(b)}
+                      className="rounded-full border border-line px-3 py-1 text-sm font-semibold hover:bg-canvas"
+                    >
+                      Make active
+                    </button>
+                    <button
+                      onClick={() => openDelete(b)}
+                      className="rounded-full px-3 py-1 text-sm font-semibold text-red-500 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -407,6 +452,37 @@ export default function BoardEditor({
               className="rounded-full bg-ink px-5 py-2 font-semibold text-white disabled:opacity-50"
             >
               {activating ? "Switching…" : "Make active"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {toDelete && (
+        <Modal title="Delete this board?" onClose={() => setToDelete(null)}>
+          <p className="text-sm text-muted">
+            This permanently deletes{" "}
+            <strong className="text-ink">{toDelete.title}</strong>
+            {toDelete.subtitle && ` (${toDelete.subtitle})`}, including all of its
+            tiles and every athlete upload on it. This can&apos;t be undone.
+          </p>
+          {deleteError && (
+            <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {deleteError}
+            </p>
+          )}
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setToDelete(null)}
+              className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="rounded-full bg-red-600 px-5 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? "Deleting…" : "Delete board"}
             </button>
           </div>
         </Modal>
