@@ -7,9 +7,9 @@
   /* Palmetto Athletics palette: Red #e20706, Dark Grey #242424, White. */
   --color-ink: #242424;
   --color-muted: #6b6b6f;
-  --color-line: #e6e6e8;
+  --color-line: #dfe1e7;
   --color-surface: #ffffff;
-  --color-canvas: #f5f5f6;
+  --color-canvas: #e7e9f0;
 }
 
 :root {
@@ -23,10 +23,13 @@ html {
 
 body {
   background-color: var(--color-canvas);
-  /* Faint dot-grid texture so surfaces read as "designed," not flat. */
-  background-image: radial-gradient(rgba(36, 36, 36, 0.045) 1px, transparent 1px);
-  background-size: 22px 22px;
-  background-attachment: fixed;
+  /* Cool-grey gradient + faint dot-grid so white cards/tiles visibly lift off
+     the page instead of blending into a near-white flat background. */
+  background-image:
+    radial-gradient(rgba(36, 36, 36, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, #edeff4 0%, #e2e4ec 100%);
+  background-size: 22px 22px, 100% 100%;
+  background-attachment: fixed, fixed;
   color: var(--color-ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -46,21 +49,21 @@ body {
 /* Soft, layered card shadow — warmer and less generic than a flat border. */
 .shadow-card {
   box-shadow:
-    0 1px 2px rgba(15, 23, 38, 0.04),
-    0 8px 24px -12px rgba(15, 23, 38, 0.12);
+    0 1px 2px rgba(15, 23, 38, 0.06),
+    0 12px 28px -10px rgba(15, 23, 38, 0.20);
 }
 
 /* Stronger lift for interactive tiles / completed states. */
 .shadow-lift {
   box-shadow:
-    0 2px 4px rgba(15, 23, 38, 0.06),
-    0 18px 40px -16px rgba(15, 23, 38, 0.28);
+    0 2px 6px rgba(15, 23, 38, 0.10),
+    0 24px 50px -18px rgba(15, 23, 38, 0.40);
 }
 
 /* Choice-board tiles: subtle depth gradient + a colored category rail. */
 .tile {
   position: relative;
-  background-image: linear-gradient(165deg, #ffffff 0%, #eef1f5 100%);
+  background-image: linear-gradient(165deg, #ffffff 0%, #e7ebf2 100%);
 }
 .tile::before {
   content: "";
