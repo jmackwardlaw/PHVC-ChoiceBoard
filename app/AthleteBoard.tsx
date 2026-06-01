@@ -146,7 +146,7 @@ export default function AthleteBoard({
                     onClick={() => tappable && setActiveTask(task)}
                     disabled={!tappable}
                     style={{ ["--i" as string]: i }}
-                    className={`reveal group relative flex min-h-[150px] flex-col overflow-hidden rounded-2xl border p-4 text-left transition active:scale-[0.98] disabled:cursor-default ${
+                    className={`reveal group relative flex min-h-[150px] flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border p-4 text-center transition active:scale-[0.98] disabled:cursor-default ${
                       redo
                         ? "border-red-300 bg-red-50 shadow-card"
                         : done
@@ -154,46 +154,33 @@ export default function AthleteBoard({
                           : "tile border-line shadow-card hover:-translate-y-1 hover:border-accent hover:shadow-lift"
                     }`}
                   >
-                    {task.category && (
-                      <span
-                        className={`font-race text-xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
-                          done ? "text-white" : redo ? "text-red-600" : "text-accent"
-                        }`}
-                      >
-                        {task.category}
+                    <span
+                      className={`font-race text-2xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
+                        done ? "text-white" : redo ? "text-red-600" : "text-accent"
+                      }`}
+                    >
+                      {task.category || softBreak(task.title)}
+                    </span>
+
+                    {redo ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700">
+                        ↻ Redo — tap again
+                      </span>
+                    ) : done ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                        <CheckIcon /> Completed
+                      </span>
+                    ) : loadingSubs ? (
+                      <span className="text-sm text-muted">…</span>
+                    ) : locked ? (
+                      <span className="text-xs font-bold uppercase tracking-wide text-muted">
+                        Closed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent transition group-hover:bg-accent group-hover:text-white">
+                        Upload now ↑
                       </span>
                     )}
-                    <span
-                      className={`mt-2 text-sm font-bold leading-tight [overflow-wrap:anywhere] ${
-                        done ? "text-white/90" : redo ? "text-red-700" : "text-ink/75"
-                      }`}
-                    >
-                      {softBreak(task.title)}
-                    </span>
-                    <span
-                      className={`mt-auto pt-3 text-sm font-semibold ${
-                        done ? "text-white/90" : ""
-                      }`}
-                    >
-                      {redo ? (
-                        <span className="font-semibold text-red-600">
-                          ↻ Coach asked for a redo — tap to re-upload
-                        </span>
-                      ) : sub ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <CheckIcon />{" "}
-                          {sub.status === "approved" ? "Approved ★" : "Submitted"}
-                        </span>
-                      ) : loadingSubs ? (
-                        <span className="text-muted">…</span>
-                      ) : locked ? (
-                        <span className="text-muted">Closed</span>
-                      ) : (
-                        <span className="text-muted group-hover:text-accent">
-                          Tap to upload ↑
-                        </span>
-                      )}
-                    </span>
                   </button>
                 );
               })}
