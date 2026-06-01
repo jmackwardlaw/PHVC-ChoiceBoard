@@ -39,7 +39,12 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
     const { ok, json } = await call({ action: "add-bulk", names: bulk });
     if (ok) {
       const n = Number(json.added ?? 0);
-      setMsg({ text: `Added ${n} athlete${n === 1 ? "" : "s"}.`, ok: true });
+      const skipped = Number(json.skipped ?? 0);
+      const skipNote = skipped > 0 ? ` Skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}.` : "";
+      setMsg({
+        text: `Added ${n} athlete${n === 1 ? "" : "s"}.${skipNote}`,
+        ok: true,
+      });
       setBulk("");
       setShowBulk(false);
     } else {

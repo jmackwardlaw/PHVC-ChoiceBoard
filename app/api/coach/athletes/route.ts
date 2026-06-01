@@ -4,6 +4,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+type Db = ReturnType<typeof createAdminClient>;
+
+// Lowercased set of every name already on the roster, for duplicate checks.
+async function existingNameSet(supabase: Db): Promise<Set<string>> {
+  const { data } = await supabase.from("athletes").select("name");
+  return new Set((data ?? []).map((a) => String(a.name).trim().toLowerCase()));
+}
+
 export async function POST(request: Request) {
   const coach = await getCoach();
   if (!coach) {
@@ -25,6 +33,13 @@ export async function POST(request: Request) {
     if (name.length < 2) {
       return NextResponse.json({ error: "Enter a name." }, { status: 400 });
     }
+    const existing = await existingNameSet(supabase);
+    if (existing.has(name.toLowerCase())) {
+      return NextResponse.json(
+        { error: `${name} is already on the roster.` },
+        { status: 400 },
+      );
+    }
     const { data, error } = await supabase
       .from("athletes")
       .insert({ name })
@@ -38,19 +53,36 @@ export async function POST(request: Request) {
     // Split on line breaks, tabs, commas, and semicolons so any paste shape
     // works — a column of cells (newlines), a row of cells (tabs), or a
     // comma/semicolon list. Spaces are preserved so full names stay intact.
-    const names = String(body.names ?? "")
+    const parsed = String(body.names ?? "")
       .split(/[\n\r\t,;]+/)
       .map((n) => n.trim())
       .filter((n) => n.length >= 2)
       .slice(0, 200);
-    if (!names.length) {
+    if (!parsed.length) {
       return NextResponse.json({ error: "No names found." }, { status: 400 });
+    }
+
+    // Skip names already on the roster and any repeats within the paste
+    // (compared case-insensitively).
+    const existing = await existingNameSet(supabase);
+    const seen = new Set<string>();
+    const toAdd: string[] = [];
+    for (const name of parsed) {
+      const key = name.toLowerCase();
+      if (existing.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      toAdd.push(name);
+    }
+    const skipped = parsed.length - toAdd.length;
+
+    if (!toAdd.length) {
+      return NextResponse.json({ ok: true, added: 0, skipped });
     }
     const { error } = await supabase
       .from("athletes")
-      .insert(names.map((name) => ({ name })));
+      .insert(toAdd.map((name) => ({ name })));
     if (error) return NextResponse.json({ error: "Could not add." }, { status: 500 });
-    return NextResponse.json({ ok: true, added: names.length });
+    return NextResponse.json({ ok: true, added: toAdd.length, skipped });
   }
 
   if (action === "rename") {

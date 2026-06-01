@@ -71,6 +71,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Permanently delete a submission (and its stored file), resetting that
+  // athlete on that tile so they can upload again.
+  if (action === "delete-submission") {
+    const submissionId = body.submissionId as string;
+    if (!submissionId) {
+      return NextResponse.json({ error: "Missing submissionId." }, { status: 400 });
+    }
+    const { data: sub } = await supabase
+      .from("submissions")
+      .select("file_path, file_type")
+      .eq("id", submissionId)
+      .maybeSingle();
+
+    if (sub?.file_path && sub.file_type !== "manual") {
+      await supabase.storage.from("artifacts").remove([sub.file_path]);
+    }
+
+    const { error } = await supabase
+      .from("submissions")
+      .delete()
+      .eq("id", submissionId);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   // Default: approve / needs-redo an existing submission.
   const submissionId = body.submissionId as string;
   const status = body.status as string;

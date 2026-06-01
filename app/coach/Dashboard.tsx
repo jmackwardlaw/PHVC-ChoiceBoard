@@ -859,6 +859,8 @@ function ArtifactModal({
   const [error, setError] = useState("");
   const [status, setStatus] = useState(cell.sub.status);
   const [saving, setSaving] = useState<"approved" | "redo" | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (manual) return;
@@ -879,6 +881,24 @@ function ArtifactModal({
     if (res.ok) {
       setStatus(next);
       router.refresh();
+    }
+  }
+
+  async function deleteUpload() {
+    setDeleting(true);
+    const res = await fetch("/api/coach/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete-submission", submissionId: cell.sub.id }),
+    });
+    setDeleting(false);
+    if (res.ok) {
+      router.refresh();
+      onClose();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setError(j.error ?? "Could not delete.");
+      setConfirmDelete(false);
     }
   }
 
@@ -972,15 +992,56 @@ function ArtifactModal({
               </div>
             </div>
 
-            {url && (
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-block text-sm font-semibold text-accent"
-              >
-                Open full size ↗
-              </a>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              {url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-accent"
+                >
+                  Open full size ↗
+                </a>
+              ) : (
+                <span />
+              )}
+              {!confirmDelete && (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-sm font-semibold text-red-500 hover:text-red-700"
+                >
+                  Delete upload
+                </button>
+              )}
+            </div>
+
+            {confirmDelete && (
+              <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3">
+                <p className="text-sm font-semibold text-red-700">
+                  Delete this upload?
+                </p>
+                <p className="mt-0.5 text-xs text-red-600">
+                  Permanently removes {cell.athlete.name}&apos;s file for this
+                  tile and resets it to “not done.” They can upload again. This
+                  can&apos;t be undone.
+                </p>
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={deleting}
+                    className="rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-semibold hover:bg-canvas disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={deleteUpload}
+                    disabled={deleting}
+                    className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}
