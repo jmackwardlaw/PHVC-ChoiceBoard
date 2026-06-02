@@ -29,7 +29,7 @@ const race = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "PHVC Choice Board",
+  title: "PHS Cheer Board",
   description: "Varsity Cheer conditioning board — upload your evidence.",
 };
 
