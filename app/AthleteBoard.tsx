@@ -370,24 +370,24 @@ function Header({
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   return (
     <header className="accent-header text-white shadow-sm">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2.5 px-4 py-4">
+      {/* On mobile the logo stacks on its own line above the title (which then
+          gets full width and never truncates); on desktop it's a single row. */}
+      <div className="mx-auto flex max-w-5xl flex-col gap-2.5 px-4 py-4 sm:flex-row sm:items-center sm:gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/taking-it-back-white.svg"
           alt="Palmetto — Taking It Back"
-          className="order-1 h-14 w-auto shrink-0 sm:h-24"
+          className="h-16 w-auto shrink-0 self-start sm:h-24 sm:self-auto"
         />
-        {/* On mobile the title drops to its own full-width line so it never
-            truncates; on desktop it sits inline between logo and ring. */}
-        <div className="order-3 w-full min-w-0 sm:order-2 sm:w-auto sm:flex-1">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-white/80 sm:text-xs">
-            {board.subtitle || "Choice Board"}
-          </p>
-          <h1 className="font-race text-3xl uppercase leading-none sm:truncate sm:text-4xl">
-            {board.title}
-          </h1>
-        </div>
-        <div className="order-2 ml-auto sm:order-3 sm:ml-0">
+        <div className="flex items-center gap-3 sm:flex-1">
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-white/80 sm:text-xs">
+              {board.subtitle || "Choice Board"}
+            </p>
+            <h1 className="font-race text-3xl uppercase leading-none sm:truncate sm:text-4xl">
+              {board.title}
+            </h1>
+          </div>
           <Ring pct={pct} label={`${doneCount}/${total}`} />
         </div>
       </div>
