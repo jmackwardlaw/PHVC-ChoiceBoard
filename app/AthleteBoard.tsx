@@ -260,12 +260,15 @@ function NamePicker({
       style={{ ["--accent" as string]: board.accent_color }}
     >
       <div className="accent-header flex flex-col items-center px-6 pb-7 pt-8 text-center text-white shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/taking-it-back-white.svg"
-          alt="Palmetto — Taking It Back"
-          className="w-80 max-w-[85%] sm:w-[26rem]"
-        />
+        {/* Wrapper keeps the SVG from collapsing as a flex-column item in Safari. */}
+        <div className="w-80 max-w-[85%] sm:w-[26rem]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/taking-it-back-white.svg"
+            alt="Palmetto — Taking It Back"
+            className="block h-auto w-full"
+          />
+        </div>
         {board.subtitle && (
           <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-white/85">
             {board.subtitle}
