@@ -101,9 +101,9 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
 
         <button
           onClick={() => setShowBulk((s) => !s)}
-          className="mt-3 text-sm font-semibold text-muted hover:text-ink"
+          className="mt-3 w-full rounded-xl border border-line py-2.5 text-sm font-semibold text-ink transition hover:bg-canvas"
         >
-          {showBulk ? "Hide" : "Paste a list (bulk import)"}
+          {showBulk ? "Hide bulk import" : "Paste a list (bulk import)"}
         </button>
         {showBulk && (
           <div className="mt-2">
