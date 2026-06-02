@@ -373,12 +373,16 @@ function Header({
       {/* On mobile the logo stacks on its own line above the title (which then
           gets full width and never truncates); on desktop it's a single row. */}
       <div className="mx-auto flex max-w-5xl flex-col gap-2.5 px-4 py-4 sm:flex-row sm:items-center sm:gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/taking-it-back-white.svg"
-          alt="Palmetto — Taking It Back"
-          className="h-16 w-auto shrink-0 self-start sm:h-24 sm:self-auto"
-        />
+        {/* Wrapper keeps the SVG's width from collapsing to 0 as a flex-column
+            item in Safari. */}
+        <div className="shrink-0 self-start sm:self-auto">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/taking-it-back-white.svg"
+            alt="Palmetto — Taking It Back"
+            className="block h-16 w-auto sm:h-24"
+          />
+        </div>
         <div className="flex items-center gap-3 sm:flex-1">
           <div className="min-w-0 flex-1">
             <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-white/80 sm:text-xs">
