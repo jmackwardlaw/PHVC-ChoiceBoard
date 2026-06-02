@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ClipboardEvent } from "react";
 import type { Athlete } from "@/lib/types";
 import Modal from "../Modal";
 
@@ -34,9 +34,10 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
     else setMsg({ text: String(json.error ?? "Could not add."), ok: false });
   }
 
-  async function addBulk() {
-    if (!bulk.trim()) return;
-    const { ok, json } = await call({ action: "add-bulk", names: bulk });
+  async function addBulk(namesText?: string) {
+    const names = (namesText ?? bulk).trim();
+    if (!names) return;
+    const { ok, json } = await call({ action: "add-bulk", names });
     if (ok) {
       const n = Number(json.added ?? 0);
       const skipped = Number(json.skipped ?? 0);
@@ -45,10 +46,24 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
         text: `Added ${n} athlete${n === 1 ? "" : "s"}.${skipNote}`,
         ok: true,
       });
-      setBulk("");
-      setShowBulk(false);
+      // Only clear/close the bulk box when the names came from it.
+      if (namesText === undefined) {
+        setBulk("");
+        setShowBulk(false);
+      }
+      setNewName("");
     } else {
       setMsg({ text: String(json.error ?? "Could not add names."), ok: false });
+    }
+  }
+
+  // Pasting a multi-name list (e.g. a column copied from a spreadsheet) into the
+  // single-name box would flatten onto one line, so intercept it and bulk-add.
+  function onNamePaste(e: ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (/[\n\r\t,;]/.test(text.trim())) {
+      e.preventDefault();
+      addBulk(text);
     }
   }
 
@@ -71,7 +86,8 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addOne()}
-            placeholder="Full name"
+            onPaste={onNamePaste}
+            placeholder="Full name (or paste a list)"
             className="flex-1 rounded-xl border border-line bg-canvas px-3 py-2.5 outline-none focus:border-ink"
           />
           <button
@@ -103,7 +119,7 @@ export default function RosterEditor({ athletes }: { athletes: Athlete[] }) {
               separate lines, in a row, or separated by commas.
             </p>
             <button
-              onClick={addBulk}
+              onClick={() => addBulk()}
               disabled={busy}
               className="mt-2 w-full rounded-xl bg-ink py-2.5 font-semibold text-white disabled:opacity-50"
             >
