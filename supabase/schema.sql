@@ -62,6 +62,19 @@ create index if not exists submissions_board_idx   on submissions(board_id);
 create index if not exists submissions_athlete_idx on submissions(athlete_id);
 create index if not exists submissions_task_idx    on submissions(task_id);
 
+-- Coaches who can sign in, managed from the dashboard. This is *in addition* to
+-- the ALLOWED_COACH_EMAILS env var, which always works as a bootstrap so nobody
+-- can lock themselves out. Emails are stored lowercased by the app.
+create table if not exists coaches (
+  id             uuid primary key default gen_random_uuid(),
+  email          text not null unique,
+  name           text not null default '',
+  added_by_email text not null default '',
+  created_at     timestamptz not null default now()
+);
+
+create unique index if not exists coaches_email_lower_key on coaches (lower(email));
+
 -- ----------------------------------------------------------------------------
 -- Security: lock every table down. The app talks to the database only from the
 -- server using the SERVICE ROLE key, which bypasses RLS. With RLS enabled and
@@ -73,6 +86,7 @@ alter table boards      enable row level security;
 alter table tasks       enable row level security;
 alter table athletes    enable row level security;
 alter table submissions enable row level security;
+alter table coaches     enable row level security;
 
 -- ----------------------------------------------------------------------------
 -- Private storage bucket for the uploaded photos/videos.

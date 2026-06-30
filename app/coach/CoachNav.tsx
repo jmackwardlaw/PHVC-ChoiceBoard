@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/coach", label: "Dashboard" },
   { href: "/coach/board", label: "Edit board" },
   { href: "/coach/roster", label: "Roster" },
+  { href: "/coach/coaches", label: "Coaches" },
   { href: "/coach/qr", label: "QR poster" },
 ];
 

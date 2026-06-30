@@ -7,10 +7,13 @@ export const dynamic = "force-dynamic";
 
 const STATUSES = new Set(["submitted", "approved", "redo"]);
 
-// POST handles three coach actions on submissions:
-//   { submissionId, status }                       → approve / needs-redo
+// POST handles coach actions on submissions:
+//   { submissionId, status }                       → approve / needs-redo one
 //   { action: "mark-complete", boardId, taskId, athleteId } → manual check-off
 //   { action: "unmark", submissionId }             → undo a manual check-off
+//   { action: "delete-submission", submissionId }  → delete upload + stored file
+//   { action: "bulk-approve" | "bulk-redo", boardId?, taskId?, athleteId? }
+//                                                  → review all pending at once
 export async function POST(request: Request) {
   const coach = await getCoach();
   if (!coach) {
@@ -97,6 +100,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
+  }
+
+  // Bulk approve/redo every still-pending ("submitted") upload, optionally
+  // scoped to a board, task, or athlete. Only touches "submitted" rows, so
+  // already-approved, redo, and manual entries are left alone.
+  if (action === "bulk-approve" || action === "bulk-redo") {
+    const next = action === "bulk-approve" ? "approved" : "redo";
+    const boardId = body.boardId as string | undefined;
+    const taskId = body.taskId as string | undefined;
+    const athleteId = body.athleteId as string | undefined;
+    // Redo can send work back to athletes, so require a board scope to avoid an
+    // accidental everything-everywhere reset.
+    if (action === "bulk-redo" && !boardId) {
+      return NextResponse.json({ error: "Missing boardId." }, { status: 400 });
+    }
+    let query = supabase
+      .from("submissions")
+      .update({ status: next })
+      .eq("status", "submitted");
+    if (boardId) query = query.eq("board_id", boardId);
+    if (taskId) query = query.eq("task_id", taskId);
+    if (athleteId) query = query.eq("athlete_id", athleteId);
+    const { data, error } = await query.select("id");
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, count: data?.length ?? 0 });
   }
 
   // Default: approve / needs-redo an existing submission.

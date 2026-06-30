@@ -28,6 +28,14 @@ export type Athlete = {
   created_at: string;
 };
 
+export type Coach = {
+  id: string;
+  email: string;
+  name: string;
+  added_by_email: string;
+  created_at: string;
+};
+
 export type Submission = {
   id: string;
   board_id: string;

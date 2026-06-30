@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
 import { softBreak } from "../softBreak";
+import Modal from "./Modal";
 
 type Cell = { athlete: Athlete; task: Task; sub: Submission };
 type View = "board" | "athletes" | "leaderboard";
@@ -95,6 +96,20 @@ export default function Dashboard({
     router.refresh();
   }
 
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+
+  async function bulkApprove(filter: { taskId?: string; athleteId?: string } = {}) {
+    setBulkBusy(true);
+    await fetch("/api/coach/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "bulk-approve", boardId: board.id, ...filter }),
+    });
+    setBulkBusy(false);
+    router.refresh();
+  }
+
   const total = tasks.length;
   const finishedAll = rows.filter((r) => r.done === total && total > 0);
   const totalCells = athletes.length * total;
@@ -122,6 +137,7 @@ export default function Dashboard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {board.due_date && <DeadlineChip dueDate={board.due_date} daysLeft={daysLeft} />}
+          <ExportMenu boardId={board.id} />
           {allBoards.length > 1 && (
             <BoardSwitcher
               board={board}
@@ -154,6 +170,21 @@ export default function Dashboard({
         <Stat i={2} label="Finished all" value={String(finishedAll.length)} accent />
         <Stat i={3} label="Needs review" value={String(pendingCount)} highlight={pendingCount > 0} />
       </div>
+
+      {pendingCount > 0 && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-800">
+            {pendingCount} upload{pendingCount === 1 ? "" : "s"} waiting for review.
+          </p>
+          <button
+            onClick={() => setConfirmBulk(true)}
+            disabled={bulkBusy}
+            className="shrink-0 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {bulkBusy ? "Approving…" : `Approve all (${pendingCount}) ★`}
+          </button>
+        </div>
+      )}
 
       {/* View switcher */}
       <div className="mb-5 inline-flex rounded-full border border-line bg-surface p-1">
@@ -212,6 +243,8 @@ export default function Dashboard({
           byKey={byKey}
           marking={marking}
           onMarkComplete={markComplete}
+          onBulkApprove={bulkApprove}
+          bulkBusy={bulkBusy}
           onClose={() => setOpenTask(null)}
           onView={setViewing}
         />
@@ -224,6 +257,8 @@ export default function Dashboard({
           byKey={byKey}
           marking={marking}
           onMarkComplete={markComplete}
+          onBulkApprove={bulkApprove}
+          bulkBusy={bulkBusy}
           onClose={() => setOpenAthlete(null)}
           onView={setViewing}
         />
@@ -235,6 +270,90 @@ export default function Dashboard({
           onUnmark={unmark}
           onClose={() => setViewing(null)}
         />
+      )}
+
+      {confirmBulk && (
+        <Modal title="Approve all pending?" onClose={() => setConfirmBulk(false)}>
+          <p className="text-sm text-muted">
+            This approves all{" "}
+            <strong className="text-ink">{pendingCount}</strong> upload
+            {pendingCount === 1 ? "" : "s"} currently waiting for review on this
+            board. Uploads already approved or sent back for a redo aren&apos;t
+            affected.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              onClick={() => setConfirmBulk(false)}
+              className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setConfirmBulk(false);
+                bulkApprove();
+              }}
+              className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white hover:bg-emerald-700"
+            >
+              Approve all
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Export menu ───────────────────────── */
+
+function ExportMenu({ boardId }: { boardId: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const items = [
+    { href: `/api/coach/export?type=completion&boardId=${boardId}`, label: "Completion report (CSV)" },
+    { href: `/api/coach/export?type=submissions&boardId=${boardId}`, label: "All submissions (CSV)" },
+    { href: `/api/coach/export?type=roster`, label: "Roster (CSV)" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-1.5 text-sm font-semibold shadow-sm hover:border-ink/30"
+      >
+        Export
+        <span className={`text-muted transition ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-60 overflow-hidden rounded-2xl border border-line bg-surface py-1.5 shadow-xl">
+          {items.map((it) => (
+            <a
+              key={it.href}
+              href={it.href}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm font-medium hover:bg-canvas"
+            >
+              {it.label}
+            </a>
+          ))}
+          <Link
+            href={`/coach/report?board=${boardId}`}
+            onClick={() => setOpen(false)}
+            className="block border-t border-line px-4 py-2 text-sm font-semibold text-accent hover:bg-canvas"
+          >
+            Printable report →
+          </Link>
+        </div>
       )}
     </div>
   );
@@ -498,6 +617,8 @@ function TaskDetailModal({
   byKey,
   marking,
   onMarkComplete,
+  onBulkApprove,
+  bulkBusy,
   onClose,
   onView,
 }: {
@@ -506,6 +627,8 @@ function TaskDetailModal({
   byKey: Map<string, Submission>;
   marking: string | null;
   onMarkComplete: (taskId: string, athleteId: string) => void;
+  onBulkApprove: (filter: { taskId?: string; athleteId?: string }) => void;
+  bulkBusy: boolean;
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
@@ -516,12 +639,24 @@ function TaskDetailModal({
     if (sub && sub.status !== "redo") done.push({ athlete: a, sub });
     else missing.push(a);
   }
+  const submitted = done.filter((d) => d.sub.status === "submitted").length;
 
   return (
     <Sheet onClose={onClose} title={task.title} eyebrow={task.category || "Tile"}>
-      <p className="mb-4 text-sm font-semibold">
-        {done.length}/{athletes.length} done
-      </p>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">
+          {done.length}/{athletes.length} done
+        </p>
+        {submitted > 0 && (
+          <button
+            onClick={() => onBulkApprove({ taskId: task.id })}
+            disabled={bulkBusy}
+            className="shrink-0 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {bulkBusy ? "Approving…" : `Approve all submitted (${submitted}) ★`}
+          </button>
+        )}
+      </div>
       {done.length > 0 && (
         <ul className="mb-4 space-y-1">
           {done.map(({ athlete, sub }) => (
@@ -581,6 +716,8 @@ function AthleteDetailModal({
   byKey,
   marking,
   onMarkComplete,
+  onBulkApprove,
+  bulkBusy,
   onClose,
   onView,
 }: {
@@ -589,11 +726,16 @@ function AthleteDetailModal({
   byKey: Map<string, Submission>;
   marking: string | null;
   onMarkComplete: (taskId: string, athleteId: string) => void;
+  onBulkApprove: (filter: { taskId?: string; athleteId?: string }) => void;
+  bulkBusy: boolean;
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
   const done = tasks.filter((t) => counts(byKey.get(`${athlete.id}:${t.id}`))).length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const submitted = tasks.filter(
+    (t) => byKey.get(`${athlete.id}:${t.id}`)?.status === "submitted",
+  ).length;
 
   return (
     <Sheet onClose={onClose} title={athlete.name} eyebrow="Athlete">
@@ -605,6 +747,15 @@ function AthleteDetailModal({
           {done}/{tasks.length} · {pct}%
         </span>
       </div>
+      {submitted > 0 && (
+        <button
+          onClick={() => onBulkApprove({ athleteId: athlete.id })}
+          disabled={bulkBusy}
+          className="mb-4 w-full rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {bulkBusy ? "Approving…" : `Approve all submitted (${submitted}) ★`}
+        </button>
+      )}
       <ul className="space-y-1.5">
         {tasks.map((t) => {
           const sub = byKey.get(`${athlete.id}:${t.id}`);

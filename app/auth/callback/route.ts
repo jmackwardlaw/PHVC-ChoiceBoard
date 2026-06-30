@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!isAllowedCoach(user?.email)) {
+  if (!(await isAllowedCoach(user?.email))) {
     await supabase.auth.signOut();
     return NextResponse.redirect(`${base}/coach/login?error=not-allowed`);
   }
