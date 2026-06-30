@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCoach } from "@/lib/coach";
 import { slugify, toCsv, type CsvValue } from "@/lib/csv";
+import { completionReportPdf } from "@/lib/pdf";
 import {
   getActiveBoard,
   getAthletes,
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "";
   const boardParam = searchParams.get("boardId");
+  const format = searchParams.get("format") === "pdf" ? "pdf" : "csv";
 
   // Roster export doesn't depend on a board.
   if (type === "roster") {
@@ -75,13 +77,38 @@ export async function GET(request: Request) {
       if (!latest.has(key)) latest.set(key, s);
     }
     const total = tasks.length;
+    const completion = athletes.map((a) => ({
+      name: a.name,
+      done: tasks.filter((t) => isDone(latest.get(`${a.id}:${t.id}`))).length,
+      total,
+    }));
+
+    if (format === "pdf") {
+      // Sort highest completion first to match the on-screen report.
+      const sorted = [...completion].sort(
+        (x, y) => y.done - x.done || x.name.localeCompare(y.name),
+      );
+      const bytes = await completionReportPdf({
+        title: board.title,
+        subtitle: board.subtitle,
+        accent: board.accent_color,
+        rows: sorted,
+      });
+      return new Response(Buffer.from(bytes), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="phvc-completion-${slug}.pdf"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
     const rows: CsvValue[][] = [
       ["Athlete", "Tasks done", "Total", "Percent", "Finished"],
     ];
-    for (const a of athletes) {
-      const done = tasks.filter((t) => isDone(latest.get(`${a.id}:${t.id}`))).length;
-      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-      rows.push([a.name, done, total, `${pct}%`, done === total && total > 0 ? "Yes" : "No"]);
+    for (const r of completion) {
+      const pct = r.total > 0 ? Math.round((r.done / r.total) * 100) : 0;
+      rows.push([r.name, r.done, r.total, `${pct}%`, r.done === r.total && r.total > 0 ? "Yes" : "No"]);
     }
     return csvResponse(toCsv(rows), `phvc-completion-${slug}.csv`);
   }

@@ -55,6 +55,12 @@ export default function ReportView({
             </select>
           )}
           <a
+            href={`/api/coach/export?type=completion&boardId=${boardId}&format=pdf`}
+            className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-canvas"
+          >
+            Download PDF
+          </a>
+          <a
             href={`/api/coach/export?type=completion&boardId=${boardId}`}
             className="rounded-full border border-line px-4 py-2 text-sm font-semibold hover:bg-canvas"
           >
@@ -64,7 +70,7 @@ export default function ReportView({
             onClick={() => window.print()}
             className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
           >
-            Print / PDF
+            Print
           </button>
         </div>
       </div>

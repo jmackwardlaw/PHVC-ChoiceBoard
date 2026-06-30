@@ -320,6 +320,7 @@ function ExportMenu({ boardId }: { boardId: string }) {
   }, [open]);
 
   const items = [
+    { href: `/api/coach/export?type=completion&boardId=${boardId}&format=pdf`, label: "Completion report (PDF)" },
     { href: `/api/coach/export?type=completion&boardId=${boardId}`, label: "Completion report (CSV)" },
     { href: `/api/coach/export?type=submissions&boardId=${boardId}`, label: "All submissions (CSV)" },
     { href: `/api/coach/export?type=roster`, label: "Roster (CSV)" },
