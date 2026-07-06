@@ -207,6 +207,7 @@ export default function AthleteBoard({
           task={activeTask}
           existing={completed[activeTask.id]}
           onClose={() => setActiveTask(null)}
+          onInvalidAthlete={signOutAthlete}
           onDone={(sub) => {
             setCompleted((prev) => ({ ...prev, [sub.task_id]: sub }));
             setActiveTask(null);
@@ -547,6 +548,7 @@ export function UploadSheet({
   existing,
   onClose,
   onDone,
+  onInvalidAthlete,
 }: {
   board: Board;
   athlete: Athlete;
@@ -554,6 +556,7 @@ export function UploadSheet({
   existing?: Submission;
   onClose: () => void;
   onDone: (s: Submission) => void;
+  onInvalidAthlete?: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
@@ -583,7 +586,14 @@ export function UploadSheet({
         }),
       });
       const urlJson = await urlRes.json();
-      if (!urlRes.ok) throw new Error(urlJson.error ?? "Upload failed.");
+      if (!urlRes.ok) {
+        // Stale saved name (its athlete row no longer exists): reset to the name
+        // picker so they can reselect, instead of dead-ending on every upload.
+        if (urlRes.status === 404 && urlJson.reason === "athlete") {
+          onInvalidAthlete?.();
+        }
+        throw new Error(urlJson.error ?? "Upload failed.");
+      }
 
       // Upload straight to R2 with the one-time presigned URL.
       const putRes = await fetch(urlJson.url, { method: "PUT", body: file });

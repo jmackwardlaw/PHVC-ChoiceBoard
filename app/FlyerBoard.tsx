@@ -240,6 +240,7 @@ export default function FlyerBoard({
           athlete={athlete}
           task={activeTask}
           onClose={() => setActiveTask(null)}
+          onInvalidAthlete={signOut}
           onDone={(sub) => {
             setCounts((prev) => ({
               ...prev,

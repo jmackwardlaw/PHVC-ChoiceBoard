@@ -23,12 +23,23 @@ export async function POST(request: Request) {
   const supabase = createAdminClient();
 
   // Make sure these actually belong together before handing out an upload URL.
+  // Split the two checks so a stale saved name (the common case) is obvious and
+  // the app can recover, versus a tile that isn't on this board.
   const [{ data: task }, { data: athlete }] = await Promise.all([
     supabase.from("tasks").select("id").eq("id", taskId).eq("board_id", boardId).maybeSingle(),
     supabase.from("athletes").select("id").eq("id", athleteId).maybeSingle(),
   ]);
-  if (!task || !athlete) {
-    return NextResponse.json({ error: "Unknown task or athlete." }, { status: 404 });
+  if (!athlete) {
+    return NextResponse.json(
+      { error: "We couldn’t find your name — please pick it again.", reason: "athlete" },
+      { status: 404 },
+    );
+  }
+  if (!task) {
+    return NextResponse.json(
+      { error: "This tile isn’t on the current board. Refresh and try again.", reason: "task" },
+      { status: 404 },
+    );
   }
 
   const ext = (fileName?.split(".").pop() ?? "bin")
