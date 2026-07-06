@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCoach } from "@/lib/coach";
 import { slugify, toCsv, type CsvValue } from "@/lib/csv";
 import { completionReportPdf } from "@/lib/pdf";
+import { startOfWeekMs } from "@/lib/week";
 import {
   getActiveBoard,
   getAthletes,
@@ -72,19 +73,39 @@ export async function GET(request: Request) {
   const slug = slugify(board.subtitle || board.title);
 
   if (type === "completion") {
-    // Collapse to the latest submission per (athlete, task); submissions arrive
-    // newest-first.
-    const latest = new Map<string, Submission>();
-    for (const s of submissions) {
-      const key = `${s.athlete_id}:${s.task_id}`;
-      if (!latest.has(key)) latest.set(key, s);
-    }
     const total = tasks.length;
-    const completion = athletes.map((a) => ({
-      name: a.name,
-      done: tasks.filter((t) => isDone(latest.get(`${a.id}:${t.id}`))).length,
-      total,
-    }));
+    let completion: { name: string; done: number; total: number }[];
+
+    if (board.is_flyer) {
+      // Flyer board: only this week's uploads count, and a tile is done once an
+      // athlete hits its target (e.g. 5).
+      const weekStart = startOfWeekMs();
+      const goalOf = (t: (typeof tasks)[number]) => (t.target && t.target > 0 ? t.target : 1);
+      const prog = new Map<string, number>();
+      for (const s of submissions) {
+        if (s.status === "redo") continue;
+        if (new Date(s.created_at).getTime() < weekStart) continue;
+        const key = `${s.athlete_id}:${s.task_id}`;
+        prog.set(key, (prog.get(key) ?? 0) + 1);
+      }
+      completion = athletes.map((a) => ({
+        name: a.name,
+        done: tasks.filter((t) => (prog.get(`${a.id}:${t.id}`) ?? 0) >= goalOf(t)).length,
+        total,
+      }));
+    } else {
+      // Team board: latest non-redo upload per (athlete, task) is done.
+      const latest = new Map<string, Submission>();
+      for (const s of submissions) {
+        const key = `${s.athlete_id}:${s.task_id}`;
+        if (!latest.has(key)) latest.set(key, s);
+      }
+      completion = athletes.map((a) => ({
+        name: a.name,
+        done: tasks.filter((t) => isDone(latest.get(`${a.id}:${t.id}`))).length,
+        total,
+      }));
+    }
 
     if (format === "pdf") {
       // Sort highest completion first to match the on-screen report.

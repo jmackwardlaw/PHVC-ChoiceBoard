@@ -32,15 +32,54 @@ export default function Dashboard({
   const [openAthlete, setOpenAthlete] = useState<Athlete | null>(null);
   const [openTask, setOpenTask] = useState<Task | null>(null);
 
-  // Lookup: "athleteId:taskId" → latest submission.
+  // The flyer board is a weekly habit tracker: only THIS week's (Sun–Sat)
+  // uploads count, and a tile is "done" once an athlete hits its target (e.g.
+  // 5). The team board is all-time and one non-redo upload per tile is done.
+  const isFlyer = board.is_flyer;
+  const weekStart = useMemo(() => (isFlyer ? startOfWeekMs() : 0), [isFlyer]);
+
+  // For the flyer board, ignore uploads from past weeks entirely.
+  const weekSubs = useMemo(
+    () =>
+      isFlyer
+        ? submissions.filter((s) => new Date(s.created_at).getTime() >= weekStart)
+        : submissions,
+    [submissions, isFlyer, weekStart],
+  );
+
+  // Lookup: "athleteId:taskId" → latest in-window submission (for viewing).
   const byKey = useMemo(() => {
     const map = new Map<string, Submission>();
-    for (const s of submissions) {
+    for (const s of weekSubs) {
       const key = `${s.athlete_id}:${s.task_id}`;
       if (!map.has(key)) map.set(key, s); // submissions arrive newest-first
     }
     return map;
-  }, [submissions]);
+  }, [weekSubs]);
+
+  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  const goalOf = (t: Task | undefined) => (isFlyer && t?.target ? t.target : 1);
+
+  // Flyer board: how many uploads each (athlete, tile) has this week.
+  const progress = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!isFlyer) return m;
+    for (const s of weekSubs) {
+      if (s.status === "redo") continue;
+      const key = `${s.athlete_id}:${s.task_id}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  }, [weekSubs, isFlyer]);
+
+  const progressOf = (aid: string, tid: string) => progress.get(`${aid}:${tid}`) ?? 0;
+
+  // Is a (athlete, tile) complete? Flyer = hit the weekly target; team = one
+  // non-redo upload.
+  const isDone = (aid: string, tid: string) =>
+    isFlyer
+      ? progressOf(aid, tid) >= goalOf(taskById.get(tid))
+      : counts(byKey.get(`${aid}:${tid}`));
 
   const pendingCount = useMemo(
     () => [...byKey.values()].filter((s) => s.status === "submitted").length,
@@ -50,20 +89,22 @@ export default function Dashboard({
   const rows = useMemo(() => {
     return athletes
       .map((a) => {
-        const done = tasks.filter((t) => counts(byKey.get(`${a.id}:${t.id}`))).length;
+        const done = tasks.filter((t) => isDone(a.id, t.id)).length;
         return { athlete: a, done };
       })
       .sort((x, y) => y.done - x.done || x.athlete.name.localeCompare(y.athlete.name));
-  }, [athletes, tasks, byKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [athletes, tasks, byKey, progress]);
 
-  // Per-tile completion across the whole team.
+  // Per-tile completion across the roster.
   const taskDone = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of tasks) {
-      m.set(t.id, athletes.filter((a) => counts(byKey.get(`${a.id}:${t.id}`))).length);
+      m.set(t.id, athletes.filter((a) => isDone(a.id, t.id)).length);
     }
     return m;
-  }, [tasks, athletes, byKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, athletes, byKey, progress]);
 
   const daysLeft = useMemo(() => daysUntil(board.due_date), [board.due_date]);
 
@@ -221,6 +262,8 @@ export default function Dashboard({
           rows={rows}
           byKey={byKey}
           total={total}
+          isFlyer={isFlyer}
+          progress={progress}
           onOpenAthlete={setOpenAthlete}
           onView={setViewing}
         />
@@ -241,6 +284,10 @@ export default function Dashboard({
           task={openTask}
           athletes={athletes}
           byKey={byKey}
+          isFlyer={isFlyer}
+          isDone={isDone}
+          progressOf={progressOf}
+          goalOf={goalOf}
           marking={marking}
           onMarkComplete={markComplete}
           onBulkApprove={bulkApprove}
@@ -255,6 +302,10 @@ export default function Dashboard({
           athlete={openAthlete}
           tasks={tasks}
           byKey={byKey}
+          isFlyer={isFlyer}
+          isDone={isDone}
+          progressOf={progressOf}
+          goalOf={goalOf}
           marking={marking}
           onMarkComplete={markComplete}
           onBulkApprove={bulkApprove}
@@ -440,6 +491,8 @@ function AthletesView({
   rows,
   byKey,
   total,
+  isFlyer,
+  progress,
   onOpenAthlete,
   onView,
 }: {
@@ -447,6 +500,8 @@ function AthletesView({
   rows: { athlete: Athlete; done: number }[];
   byKey: Map<string, Submission>;
   total: number;
+  isFlyer: boolean;
+  progress: Map<string, number>;
   onOpenAthlete: (a: Athlete) => void;
   onView: (c: Cell) => void;
 }) {
@@ -501,6 +556,30 @@ function AthletesView({
                 </td>
                 {tasks.map((t) => {
                   const sub = byKey.get(`${athlete.id}:${t.id}`);
+                  if (isFlyer) {
+                    const goal = t.target && t.target > 0 ? t.target : 1;
+                    const prog = progress.get(`${athlete.id}:${t.id}`) ?? 0;
+                    const done = prog >= goal;
+                    return (
+                      <td key={t.id} className="px-2 py-2.5 text-center">
+                        {sub ? (
+                          <button
+                            onClick={() => onView({ athlete, task: t, sub })}
+                            title={`${prog}/${goal} this week — view ${athlete.name}'s latest ${t.title}`}
+                            className={`mx-auto flex h-7 min-w-[2.75rem] items-center justify-center rounded-md px-1 text-xs font-bold tabular-nums transition hover:opacity-80 ${
+                              done ? "bg-emerald-500 text-white" : "bg-canvas text-muted"
+                            }`}
+                          >
+                            {prog}/{goal}
+                          </button>
+                        ) : (
+                          <span className="mx-auto flex h-7 min-w-[2.75rem] items-center justify-center rounded-md border border-line text-xs tabular-nums text-muted">
+                            0/{goal}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  }
                   return (
                     <td key={t.id} className="px-2 py-2.5 text-center">
                       {sub ? (
@@ -524,10 +603,19 @@ function AthletesView({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span>Tap a name for full detail, or a tile to view evidence.</span>
-        <Legend className="bg-amber-400" label="Submitted" />
-        <Legend className="bg-emerald-500" label="Approved" />
-        <Legend className="bg-red-500" label="Needs redo" />
+        {isFlyer ? (
+          <span>
+            Each cell shows uploads this week — green means they hit the weekly
+            goal. Tap a name for detail, or a cell to view the latest upload.
+          </span>
+        ) : (
+          <>
+            <span>Tap a name for full detail, or a tile to view evidence.</span>
+            <Legend className="bg-amber-400" label="Submitted" />
+            <Legend className="bg-emerald-500" label="Approved" />
+            <Legend className="bg-red-500" label="Needs redo" />
+          </>
+        )}
       </div>
     </>
   );
@@ -616,6 +704,10 @@ function TaskDetailModal({
   task,
   athletes,
   byKey,
+  isFlyer,
+  isDone,
+  progressOf,
+  goalOf,
   marking,
   onMarkComplete,
   onBulkApprove,
@@ -626,6 +718,10 @@ function TaskDetailModal({
   task: Task;
   athletes: Athlete[];
   byKey: Map<string, Submission>;
+  isFlyer: boolean;
+  isDone: (aid: string, tid: string) => boolean;
+  progressOf: (aid: string, tid: string) => number;
+  goalOf: (t: Task | undefined) => number;
   marking: string | null;
   onMarkComplete: (taskId: string, athleteId: string) => void;
   onBulkApprove: (filter: { taskId?: string; athleteId?: string }) => void;
@@ -633,12 +729,13 @@ function TaskDetailModal({
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
+  const goal = goalOf(task);
   const done: { athlete: Athlete; sub: Submission }[] = [];
-  const missing: Athlete[] = [];
+  const missing: { athlete: Athlete; prog: number }[] = [];
   for (const a of athletes) {
     const sub = byKey.get(`${a.id}:${task.id}`);
-    if (sub && sub.status !== "redo") done.push({ athlete: a, sub });
-    else missing.push(a);
+    if (isDone(a.id, task.id) && sub) done.push({ athlete: a, sub });
+    else missing.push({ athlete: a, prog: progressOf(a.id, task.id) });
   }
   const submitted = done.filter((d) => d.sub.status === "submitted").length;
 
@@ -684,7 +781,7 @@ function TaskDetailModal({
             Not done ({missing.length})
           </p>
           <ul className="space-y-1">
-            {missing.map((a) => {
+            {missing.map(({ athlete: a, prog }) => {
               const key = `${a.id}:${task.id}`;
               return (
                 <li
@@ -692,13 +789,20 @@ function TaskDetailModal({
                   className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-canvas"
                 >
                   <span className="text-sm font-medium text-muted">{a.name}</span>
-                  <button
-                    onClick={() => onMarkComplete(task.id, a.id)}
-                    disabled={marking === key}
-                    className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
-                  >
-                    {marking === key ? "…" : "Mark done"}
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {isFlyer && (
+                      <span className="text-xs font-bold tabular-nums text-muted">
+                        {prog}/{goal}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => onMarkComplete(task.id, a.id)}
+                      disabled={marking === key}
+                      className="rounded-full border border-line px-3 py-1 text-xs font-semibold hover:border-accent hover:text-accent disabled:opacity-50"
+                    >
+                      {marking === key ? "…" : "Mark done"}
+                    </button>
+                  </div>
                 </li>
               );
             })}
@@ -715,6 +819,10 @@ function AthleteDetailModal({
   athlete,
   tasks,
   byKey,
+  isFlyer,
+  isDone,
+  progressOf,
+  goalOf,
   marking,
   onMarkComplete,
   onBulkApprove,
@@ -725,6 +833,10 @@ function AthleteDetailModal({
   athlete: Athlete;
   tasks: Task[];
   byKey: Map<string, Submission>;
+  isFlyer: boolean;
+  isDone: (aid: string, tid: string) => boolean;
+  progressOf: (aid: string, tid: string) => number;
+  goalOf: (t: Task | undefined) => number;
   marking: string | null;
   onMarkComplete: (taskId: string, athleteId: string) => void;
   onBulkApprove: (filter: { taskId?: string; athleteId?: string }) => void;
@@ -732,7 +844,7 @@ function AthleteDetailModal({
   onClose: () => void;
   onView: (c: Cell) => void;
 }) {
-  const done = tasks.filter((t) => counts(byKey.get(`${athlete.id}:${t.id}`))).length;
+  const done = tasks.filter((t) => isDone(athlete.id, t.id)).length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const submitted = tasks.filter(
     (t) => byKey.get(`${athlete.id}:${t.id}`)?.status === "submitted",
@@ -775,7 +887,24 @@ function AthleteDetailModal({
                   {softBreak(t.title)}
                 </p>
               </div>
-              {sub ? (
+              {isFlyer ? (
+                <div className="flex shrink-0 items-center gap-2 text-xs font-semibold">
+                  <span
+                    className={`rounded-full px-2 py-0.5 tabular-nums ${
+                      isDone(athlete.id, t.id)
+                        ? "bg-emerald-500 text-white"
+                        : "bg-canvas text-muted"
+                    }`}
+                  >
+                    {progressOf(athlete.id, t.id)}/{goalOf(t)}
+                  </span>
+                  {sub && (
+                    <button onClick={() => onView({ athlete, task: t, sub })} className="text-accent">
+                      View →
+                    </button>
+                  )}
+                </div>
+              ) : sub ? (
                 <button
                   onClick={() => onView({ athlete, task: t, sub })}
                   className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold"
@@ -1258,6 +1387,15 @@ function statusLabel(status: string): string {
 
 function medal(i: number): string {
   return ["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`;
+}
+
+// Start of the current week — Sunday 00:00 local — as epoch ms. Used to scope
+// the flyer board's weekly progress.
+function startOfWeekMs(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // getDay() 0 = Sunday
+  return d.getTime();
 }
 
 // Whole days from today until the due date (negative = past).

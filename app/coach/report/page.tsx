@@ -8,6 +8,7 @@ import {
   getTasks,
 } from "@/lib/data";
 import type { Submission } from "@/lib/types";
+import { startOfWeekMs } from "@/lib/week";
 import CoachShell from "../CoachShell";
 import ReportView from "./ReportView";
 
@@ -48,18 +49,33 @@ export default async function ReportPage({
   const participated = new Set(submissions.map((s) => s.athlete_id));
   const athletes = roster.filter((a) => a.active || participated.has(a.id));
 
-  const latest = new Map<string, Submission>();
-  for (const s of submissions) {
-    const key = `${s.athlete_id}:${s.task_id}`;
-    if (!latest.has(key)) latest.set(key, s);
+  const total = tasks.length;
+
+  // Flyer board: count this week's uploads per (athlete, tile); done at target.
+  // Team board: latest non-redo upload per (athlete, tile) is done.
+  let doneCount: (athleteId: string) => number;
+  if (board.is_flyer) {
+    const weekStart = startOfWeekMs();
+    const goalOf = (t: (typeof tasks)[number]) => (t.target && t.target > 0 ? t.target : 1);
+    const prog = new Map<string, number>();
+    for (const s of submissions) {
+      if (s.status === "redo") continue;
+      if (new Date(s.created_at).getTime() < weekStart) continue;
+      const key = `${s.athlete_id}:${s.task_id}`;
+      prog.set(key, (prog.get(key) ?? 0) + 1);
+    }
+    doneCount = (aid) => tasks.filter((t) => (prog.get(`${aid}:${t.id}`) ?? 0) >= goalOf(t)).length;
+  } else {
+    const latest = new Map<string, Submission>();
+    for (const s of submissions) {
+      const key = `${s.athlete_id}:${s.task_id}`;
+      if (!latest.has(key)) latest.set(key, s);
+    }
+    doneCount = (aid) => tasks.filter((t) => isDone(latest.get(`${aid}:${t.id}`))).length;
   }
 
-  const total = tasks.length;
   const rows = athletes
-    .map((a) => {
-      const done = tasks.filter((t) => isDone(latest.get(`${a.id}:${t.id}`))).length;
-      return { name: a.name, done, total };
-    })
+    .map((a) => ({ name: a.name, done: doneCount(a.id), total }))
     .sort((x, y) => y.done - x.done || x.name.localeCompare(y.name));
 
   return (
