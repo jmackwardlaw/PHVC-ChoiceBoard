@@ -33,7 +33,7 @@ export default function Dashboard({
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const [showPending, setShowPending] = useState(false);
 
-  // The flyer board is a weekly habit tracker: only THIS week's (Sun–Sat)
+  // The flyer board is a weekly habit tracker: only THIS week's (Mon–Sun)
   // uploads count, and a tile is "done" once an athlete hits its target (e.g.
   // 5). The team board is all-time and one non-redo upload per tile is done.
   const isFlyer = board.is_flyer;
@@ -1543,12 +1543,12 @@ function medal(i: number): string {
   return ["🥇", "🥈", "🥉"][i] ?? `${i + 1}.`;
 }
 
-// Start of the current week — Sunday 00:00 local — as epoch ms. Used to scope
-// the flyer board's weekly progress.
+// Start of the current week — Monday 00:00 local — as epoch ms. Used to scope
+// the flyer board's weekly progress (the week closes Sunday 11:59pm).
 function startOfWeekMs(): number {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay()); // getDay() 0 = Sunday
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // days since Monday
   return d.getTime();
 }
 

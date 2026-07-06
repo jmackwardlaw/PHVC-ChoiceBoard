@@ -9,8 +9,8 @@ import { Header, NamePicker, UploadSheet } from "./AthleteBoard";
 const STORAGE_KEY = "phvc-athlete";
 
 // The flyer board is a weekly habit tracker: each tile needs `target`
-// submissions during the current Sunday–Saturday week to turn green, then it
-// resets on Sunday. Completion is counted from submission timestamps, so
+// submissions during the current Monday–Sunday week to turn green, then it
+// resets on Monday. Completion is counted from submission timestamps, so
 // nothing is stored per-week — last week's uploads simply fall outside the
 // window.
 export default function FlyerBoard({
@@ -119,7 +119,7 @@ export default function FlyerBoard({
                   {week.range}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
-                  This week&apos;s board closes Saturday night at 11:59pm.
+                  This week&apos;s board closes Sunday night at 11:59pm.
                 </p>
               </div>
             </div>
@@ -280,13 +280,13 @@ function Circle({ filled, active }: { filled: boolean; active: boolean }) {
   );
 }
 
-// Current Sunday 00:00 (local) through the following Saturday 23:59. Progress
-// is counted only for this window, so it resets on its own every Sunday at
-// midnight — no new board needed.
+// Current Monday 00:00 (local) through the following Sunday 23:59. Progress is
+// counted only for this window, so it resets on its own every Monday at
+// midnight (i.e. the board closes Sunday 11:59pm) — no new board needed.
 function currentWeek(): { start: number; range: string } {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - start.getDay()); // getDay() 0 = Sunday
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // days since Monday
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   const day = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric" });

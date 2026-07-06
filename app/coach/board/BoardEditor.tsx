@@ -322,7 +322,7 @@ export default function BoardEditor({
           {isFlyer && (
             <p className="mb-3 text-sm text-muted">
               The <strong>/wk</strong> number is how many uploads a flyer needs each
-              week (Sun–Sat) to complete that tile. It resets every Sunday.
+              week (Mon–Sun) to complete that tile. It resets every Monday.
             </p>
           )}
 
