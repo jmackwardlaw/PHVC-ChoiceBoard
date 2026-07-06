@@ -134,14 +134,16 @@ export default function FlyerBoard({
 
             {/* Day columns (one per weekly rep) + a weekly-progress column.
                 A circle fills left-to-right as uploads come in; only the next
-                open circle in each activity is tappable, so days fill in order. */}
-            <div className="flex gap-3 overflow-x-auto pb-2">
+                open circle in each activity is tappable, so days fill in order.
+                Responsive: 1-up on phones, wrapping up to a single 6-wide strip
+                on large screens — never a horizontal scroll that cuts off. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
               {Array.from({ length: dayCount }).map((_, d) => {
                 const dayComplete = tasks.length > 0 && tasks.every((t) => (counts[t.id] ?? 0) > d);
                 return (
                   <div
                     key={d}
-                    className="flex min-w-[150px] flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+                    className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
                   >
                     <div
                       className={`flex items-center justify-center gap-1.5 border-b px-3 py-2 ${
@@ -189,7 +191,7 @@ export default function FlyerBoard({
               })}
 
               {/* Weekly progress tracker */}
-              <div className="flex min-w-[190px] flex-col overflow-hidden rounded-2xl border-2 border-accent/40 bg-accent/5 shadow-card">
+              <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border-2 border-accent/40 bg-accent/5 shadow-card">
                 <div className="border-b border-accent/20 bg-accent px-3 py-2 text-center">
                   <span className="font-race text-lg uppercase tracking-wide text-white">
                     This week
