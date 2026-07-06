@@ -238,7 +238,7 @@ function RosterRow({
         title="Flyers also get the weekly flyer board"
         className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
           athlete.position_group === "flyer"
-            ? "border-transparent bg-violet-600 text-white hover:bg-violet-700"
+            ? "border-transparent bg-ink text-white hover:opacity-90"
             : "border-line text-muted hover:bg-canvas"
         }`}
       >

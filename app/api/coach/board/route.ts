@@ -223,7 +223,7 @@ export async function POST(request: Request) {
       .insert({
         title: "Flyer Board",
         subtitle: "This week",
-        accent_color: "#7c3aed",
+        accent_color: "#e20706",
         columns: 4,
         is_active: true,
         is_flyer: true,

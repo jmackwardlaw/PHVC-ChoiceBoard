@@ -107,8 +107,21 @@ export default function FlyerBoard({
           />
 
           <main className="mx-auto max-w-5xl px-4 pb-24 pt-6">
-            <div className="mb-4 rounded-2xl border border-line bg-surface px-5 py-3 text-center text-sm font-semibold text-muted">
-              📅 This week: {week.label} — {tasks.length} to finish, resets Sunday.
+            <div className="mb-5 flex items-center justify-center gap-4 rounded-2xl border border-line bg-surface px-5 py-4 shadow-card">
+              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-accent text-white">
+                <CalendarIcon />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-muted">
+                  Week of
+                </p>
+                <p className="font-race text-2xl uppercase leading-none text-ink">
+                  {week.range}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  Resets Sunday at midnight — a fresh board every week.
+                </p>
+              </div>
             </div>
 
             {allDone && (
@@ -123,51 +136,66 @@ export default function FlyerBoard({
                 A circle fills left-to-right as uploads come in; only the next
                 open circle in each activity is tappable, so days fill in order. */}
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {Array.from({ length: dayCount }).map((_, d) => (
-                <div
-                  key={d}
-                  className="flex min-w-[150px] flex-1 flex-col gap-2 rounded-2xl border border-line bg-surface p-3 shadow-card"
-                >
-                  <p className="text-center font-race text-lg uppercase tracking-wide text-accent">
-                    Day {d + 1}
-                  </p>
-                  {tasks.map((task) => {
-                    const goal = target(task);
-                    const c = counts[task.id] ?? 0;
-                    const filled = c > d;
-                    const isNext = c === d && d < goal;
-                    return (
-                      <button
-                        key={task.id}
-                        onClick={() => isNext && setActiveTask(task)}
-                        disabled={!isNext}
-                        className={`flex items-center gap-2 rounded-xl border p-2 text-left transition disabled:cursor-default ${
-                          filled
-                            ? "border-transparent bg-accent/10"
-                            : isNext
-                              ? "border-accent/50 hover:bg-canvas active:scale-[0.98]"
-                              : "border-line opacity-45"
-                        }`}
-                      >
-                        <Circle filled={filled} active={isNext} />
-                        <span
-                          className={`text-xs font-semibold leading-tight [overflow-wrap:anywhere] ${
-                            filled ? "text-accent" : "text-ink"
-                          }`}
-                        >
-                          {task.title}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+              {Array.from({ length: dayCount }).map((_, d) => {
+                const dayComplete = tasks.length > 0 && tasks.every((t) => (counts[t.id] ?? 0) > d);
+                return (
+                  <div
+                    key={d}
+                    className="flex min-w-[150px] flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+                  >
+                    <div
+                      className={`flex items-center justify-center gap-1.5 border-b px-3 py-2 ${
+                        dayComplete
+                          ? "border-transparent bg-accent text-white"
+                          : "border-line bg-canvas text-ink"
+                      }`}
+                    >
+                      <span className="font-race text-lg uppercase tracking-wide">Day {d + 1}</span>
+                      {dayComplete && <CheckIcon />}
+                    </div>
+                    <div className="flex flex-1 flex-col gap-2 p-2.5">
+                      {tasks.map((task) => {
+                        const goal = target(task);
+                        const c = counts[task.id] ?? 0;
+                        const filled = c > d;
+                        const isNext = c === d && d < goal;
+                        return (
+                          <button
+                            key={task.id}
+                            onClick={() => isNext && setActiveTask(task)}
+                            disabled={!isNext}
+                            className={`flex flex-1 items-center gap-2 rounded-xl border p-2 text-left transition disabled:cursor-default ${
+                              filled
+                                ? "border-transparent bg-accent/10"
+                                : isNext
+                                  ? "border-accent/50 hover:bg-canvas active:scale-[0.98]"
+                                  : "border-line opacity-45"
+                            }`}
+                          >
+                            <Circle filled={filled} active={isNext} />
+                            <span
+                              className={`text-xs font-semibold leading-tight [overflow-wrap:anywhere] ${
+                                filled ? "text-accent" : "text-ink"
+                              }`}
+                            >
+                              {task.title}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* Weekly progress tracker */}
-              <div className="flex min-w-[180px] flex-col gap-2 rounded-2xl border-2 border-accent/30 bg-accent/5 p-3">
-                <p className="text-center font-race text-lg uppercase tracking-wide text-accent">
-                  This week
-                </p>
+              <div className="flex min-w-[190px] flex-col overflow-hidden rounded-2xl border-2 border-accent/40 bg-accent/5 shadow-card">
+                <div className="border-b border-accent/20 bg-accent px-3 py-2 text-center">
+                  <span className="font-race text-lg uppercase tracking-wide text-white">
+                    This week
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-2.5">
                 {tasks.map((task) => {
                   const goal = target(task);
                   const c = Math.min(counts[task.id] ?? 0, goal);
@@ -192,6 +220,7 @@ export default function FlyerBoard({
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
           </main>
@@ -238,23 +267,38 @@ function Circle({ filled, active }: { filled: boolean; active: boolean }) {
   );
 }
 
-// Current Sunday 00:00 (local) through the following Saturday, for the weekly
-// reset window and the header label.
-function currentWeek(): { start: number; label: string } {
+// Current Sunday 00:00 (local) through the following Saturday 23:59. Progress
+// is counted only for this window, so it resets on its own every Sunday at
+// midnight — no new board needed.
+function currentWeek(): { start: number; range: string } {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay()); // getDay() 0 = Sunday
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return { start: start.getTime(), label: `${fmt(start)} – ${fmt(end)}` };
+  const day = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric" });
+  const mon = (d: Date) => d.toLocaleDateString(undefined, { month: "long" });
+  // "June 29 – July 5" or "July 6 – 12" when the month doesn't change.
+  const range =
+    mon(start) === mon(end)
+      ? `${mon(start)} ${day(start)} – ${day(end)}`
+      : `${mon(start)} ${day(start)} – ${mon(end)} ${day(end)}`;
+  return { start: start.getTime(), range };
 }
 
 function CheckIcon() {
   return (
     <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
       <path d="M4 10.5l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+      <path d="M3 9h18M8 2.5v4M16 2.5v4" strokeLinecap="round" />
     </svg>
   );
 }
