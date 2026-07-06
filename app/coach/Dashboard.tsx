@@ -31,6 +31,7 @@ export default function Dashboard({
   const [viewing, setViewing] = useState<Cell | null>(null);
   const [openAthlete, setOpenAthlete] = useState<Athlete | null>(null);
   const [openTask, setOpenTask] = useState<Task | null>(null);
+  const [showPending, setShowPending] = useState(false);
 
   // The flyer board is a weekly habit tracker: only THIS week's (Sun–Sat)
   // uploads count, and a tile is "done" once an athlete hits its target (e.g.
@@ -85,6 +86,33 @@ export default function Dashboard({
     () => [...byKey.values()].filter((s) => s.status === "submitted").length,
     [byKey],
   );
+
+  // Every in-window upload per (athlete, tile), newest-first — lets the artifact
+  // viewer page through all of a flyer's uploads for one activity.
+  const subsByKey = useMemo(() => {
+    const m = new Map<string, Submission[]>();
+    for (const s of weekSubs) {
+      const key = `${s.athlete_id}:${s.task_id}`;
+      const arr = m.get(key);
+      if (arr) arr.push(s);
+      else m.set(key, [s]);
+    }
+    return m;
+  }, [weekSubs]);
+
+  // Uploads waiting for coach review, for the "Needs review" shortcut.
+  const pending = useMemo(() => {
+    const athById = new Map(athletes.map((a) => [a.id, a]));
+    const out: Cell[] = [];
+    for (const [key, sub] of byKey) {
+      if (sub.status !== "submitted") continue;
+      const [aid, tid] = key.split(":");
+      const athlete = athById.get(aid);
+      const task = taskById.get(tid);
+      if (athlete && task) out.push({ athlete, task, sub });
+    }
+    return out;
+  }, [byKey, athletes, taskById]);
 
   const rows = useMemo(() => {
     return athletes
@@ -209,7 +237,13 @@ export default function Dashboard({
         <Stat i={0} label="Athletes" value={String(athletes.length)} />
         <Stat i={1} label="Avg completion" value={`${avgPct}%`} accent />
         <Stat i={2} label="Finished all" value={String(finishedAll.length)} accent />
-        <Stat i={3} label="Needs review" value={String(pendingCount)} highlight={pendingCount > 0} />
+        <Stat
+          i={3}
+          label="Needs review"
+          value={String(pendingCount)}
+          highlight={pendingCount > 0}
+          onClick={pendingCount > 0 ? () => setShowPending(true) : undefined}
+        />
       </div>
 
       {pendingCount > 0 && (
@@ -315,9 +349,23 @@ export default function Dashboard({
         />
       )}
 
+      {showPending && (
+        <PendingModal
+          pending={pending}
+          bulkBusy={bulkBusy}
+          onView={setViewing}
+          onApproveAll={() => {
+            setShowPending(false);
+            bulkApprove();
+          }}
+          onClose={() => setShowPending(false)}
+        />
+      )}
+
       {viewing && (
         <ArtifactModal
           cell={viewing}
+          subs={isFlyer ? subsByKey.get(`${viewing.athlete.id}:${viewing.task.id}`) : undefined}
           onUnmark={unmark}
           onClose={() => setViewing(null)}
         />
@@ -1055,29 +1103,41 @@ function Stat({
   value,
   accent,
   highlight,
+  onClick,
   i = 0,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   highlight?: boolean;
+  onClick?: () => void;
   i?: number;
 }) {
-  return (
-    <div
-      style={{ ["--i" as string]: i }}
-      className={`reveal rounded-2xl border p-4 shadow-card ${
-        accent
-          ? "border-transparent bg-accent text-white"
-          : highlight
-            ? "border-amber-300 bg-amber-50"
-            : "border-line bg-surface"
-      }`}
-    >
+  const cls = `reveal rounded-2xl border p-4 text-left shadow-card ${
+    accent
+      ? "border-transparent bg-accent text-white"
+      : highlight
+        ? "border-amber-300 bg-amber-50"
+        : "border-line bg-surface"
+  } ${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-lift" : ""}`;
+  const body = (
+    <>
       <p className={`text-xs font-semibold uppercase tracking-wide ${accent ? "text-white/80" : "text-muted"}`}>
         {label}
       </p>
-      <p className="font-display mt-1 text-3xl font-extrabold">{value}</p>
+      <p className="font-display mt-1 text-3xl font-extrabold">
+        {value}
+        {onClick && <span className="ml-1.5 align-middle text-base font-bold text-amber-700">→</span>}
+      </p>
+    </>
+  );
+  return onClick ? (
+    <button style={{ ["--i" as string]: i }} onClick={onClick} className={`${cls} w-full`}>
+      {body}
+    </button>
+  ) : (
+    <div style={{ ["--i" as string]: i }} className={cls}>
+      {body}
     </div>
   );
 }
@@ -1125,38 +1185,111 @@ function Sheet({
   );
 }
 
+function PendingModal({
+  pending,
+  bulkBusy,
+  onView,
+  onApproveAll,
+  onClose,
+}: {
+  pending: Cell[];
+  bulkBusy: boolean;
+  onView: (c: Cell) => void;
+  onApproveAll: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet onClose={onClose} title="Needs review" eyebrow={`${pending.length} waiting`}>
+      {pending.length === 0 ? (
+        <p className="text-sm text-muted">Nothing waiting for review right now. 🎉</p>
+      ) : (
+        <>
+          <button
+            onClick={onApproveAll}
+            disabled={bulkBusy}
+            className="mb-3 w-full rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {bulkBusy ? "Approving…" : `Approve all (${pending.length}) ★`}
+          </button>
+          <ul className="space-y-1">
+            {pending.map((c) => (
+              <li key={`${c.athlete.id}:${c.task.id}`}>
+                <button
+                  onClick={() => onView(c)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left hover:bg-canvas"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{c.athlete.name}</span>
+                    <span className="block truncate text-xs text-muted">{c.task.title}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-accent">Review →</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Sheet>
+  );
+}
+
 function ArtifactModal({
   cell,
+  subs,
   onUnmark,
   onClose,
 }: {
   cell: Cell;
+  subs?: Submission[];
   onUnmark: (id: string) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
-  const manual = cell.sub.file_type === "manual";
+  // Flyer tiles can have several uploads for the same activity this week; page
+  // through them. Team tiles pass a single submission.
+  const list = subs && subs.length ? subs : [cell.sub];
+  const [idx, setIdx] = useState(0);
+  const sub = list[Math.min(idx, list.length - 1)];
+  const multi = list.length > 1;
+
+  const manual = sub.file_type === "manual";
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState(cell.sub.status);
+  const [status, setStatus] = useState(sub.status);
   const [saving, setSaving] = useState<"approved" | "redo" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Reload the artifact + reset per-upload UI whenever the shown upload changes.
   useEffect(() => {
-    if (manual) return;
-    fetch(`/api/artifact?path=${encodeURIComponent(cell.sub.file_path)}`)
+    setStatus(sub.status);
+    setConfirmDelete(false);
+    setError("");
+    setUrl(null);
+    if (sub.file_type === "manual") return;
+    let cancelled = false;
+    fetch(`/api/artifact?path=${encodeURIComponent(sub.file_path)}`)
       .then((r) => r.json())
-      .then((j) => (j.url ? setUrl(j.url) : setError(j.error ?? "Could not load.")))
-      .catch(() => setError("Could not load."));
-  }, [cell, manual]);
+      .then((j) => {
+        if (cancelled) return;
+        if (j.url) setUrl(j.url);
+        else setError(j.error ?? "Could not load.");
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load.");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sub.id]);
 
   async function setReview(next: "approved" | "redo") {
     setSaving(next);
     const res = await fetch("/api/coach/submissions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ submissionId: cell.sub.id, status: next }),
+      body: JSON.stringify({ submissionId: sub.id, status: next }),
     });
     setSaving(null);
     if (res.ok) {
@@ -1170,7 +1303,7 @@ function ArtifactModal({
     const res = await fetch("/api/coach/submissions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete-submission", submissionId: cell.sub.id }),
+      body: JSON.stringify({ action: "delete-submission", submissionId: sub.id }),
     });
     setDeleting(false);
     if (res.ok) {
@@ -1199,14 +1332,35 @@ function ArtifactModal({
             </p>
             <h3 className="text-lg font-bold [overflow-wrap:anywhere]">{cell.task.title}</h3>
             <p className="text-sm text-muted">
-              {cell.athlete.name} ·{" "}
-              {new Date(cell.sub.created_at).toLocaleDateString()}
+              {cell.athlete.name} · {new Date(sub.created_at).toLocaleDateString()}
             </p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-muted hover:text-ink">
             ×
           </button>
         </div>
+
+        {multi && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl bg-canvas px-2 py-1.5">
+            <button
+              onClick={() => setIdx((i) => Math.max(0, i - 1))}
+              disabled={idx === 0}
+              className="rounded-full px-3 py-1 text-sm font-bold text-ink hover:bg-surface disabled:opacity-30"
+            >
+              ← Prev
+            </button>
+            <span className="text-xs font-semibold text-muted tabular-nums">
+              Upload {idx + 1} of {list.length}
+            </span>
+            <button
+              onClick={() => setIdx((i) => Math.min(list.length - 1, i + 1))}
+              disabled={idx === list.length - 1}
+              className="rounded-full px-3 py-1 text-sm font-bold text-ink hover:bg-surface disabled:opacity-30"
+            >
+              Next →
+            </button>
+          </div>
+        )}
 
         {manual ? (
           <>
@@ -1223,7 +1377,7 @@ function ArtifactModal({
               </span>
               <button
                 onClick={() => {
-                  onUnmark(cell.sub.id);
+                  onUnmark(sub.id);
                   onClose();
                 }}
                 className="rounded-full border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
@@ -1239,7 +1393,7 @@ function ArtifactModal({
                 <p className="p-6 text-sm text-red-600">{error}</p>
               ) : !url ? (
                 <p className="p-6 text-sm text-muted">Loading…</p>
-              ) : cell.sub.file_type === "video" ? (
+              ) : sub.file_type === "video" ? (
                 <video src={url} controls className="max-h-[60vh] w-full" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -1247,8 +1401,8 @@ function ArtifactModal({
               )}
             </div>
 
-            {cell.sub.note && (
-              <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">“{cell.sub.note}”</p>
+            {sub.note && (
+              <p className="mt-3 rounded-xl bg-canvas px-3 py-2 text-sm">“{sub.note}”</p>
             )}
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
