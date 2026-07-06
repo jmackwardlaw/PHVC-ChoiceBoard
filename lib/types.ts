@@ -5,6 +5,7 @@ export type Board = {
   accent_color: string;
   columns: number;
   is_active: boolean;
+  is_flyer: boolean;
   due_date: string | null;
   show_leaderboard: boolean;
   require_approval: boolean;
@@ -18,6 +19,7 @@ export type Task = {
   title: string;
   category: string;
   position: number;
+  target: number;
   created_at: string;
 };
 
@@ -25,6 +27,7 @@ export type Athlete = {
   id: string;
   name: string;
   active: boolean;
+  position_group: string | null; // 'flyer' = flyer; null/'base' = everyone else
   created_at: string;
 };
 

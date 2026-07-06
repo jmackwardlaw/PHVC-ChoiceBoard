@@ -95,6 +95,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set-group") {
+    const id = body.id as string;
+    // "flyer" marks a flyer; anything else clears it back to a base.
+    const group = body.group === "flyer" ? "flyer" : null;
+    if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+    await supabase.from("athletes").update({ position_group: group }).eq("id", id);
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "toggle") {
     const id = body.id as string;
     const active = Boolean(body.active);

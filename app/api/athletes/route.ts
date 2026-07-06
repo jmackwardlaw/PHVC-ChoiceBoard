@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // Lets an athlete who isn't on the roster add their own name.
 export async function POST(request: Request) {
-  let body: { name?: string };
+  let body: { name?: string; asFlyer?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -26,12 +26,23 @@ export async function POST(request: Request) {
     .ilike("name", name)
     .maybeSingle();
   if (existing) {
+    // Someone adding themselves from the flyer page should be marked a flyer,
+    // even if they were already on the roster as a base.
+    if (body.asFlyer && existing.position_group !== "flyer") {
+      const { data: updated } = await supabase
+        .from("athletes")
+        .update({ position_group: "flyer" })
+        .eq("id", existing.id)
+        .select()
+        .single();
+      return NextResponse.json({ athlete: updated ?? existing });
+    }
     return NextResponse.json({ athlete: existing });
   }
 
   const { data, error } = await supabase
     .from("athletes")
-    .insert({ name })
+    .insert({ name, position_group: body.asFlyer ? "flyer" : null })
     .select()
     .single();
 

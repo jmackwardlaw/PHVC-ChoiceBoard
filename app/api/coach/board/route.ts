@@ -5,7 +5,7 @@ import { deleteObjects } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
-type Tile = { id?: string; title: string; category?: string };
+type Tile = { id?: string; title: string; category?: string; target?: number };
 
 export async function POST(request: Request) {
   const coach = await getCoach();
@@ -54,16 +54,17 @@ export async function POST(request: Request) {
       const tile = tiles[i];
       const title = (tile.title ?? "").trim().slice(0, 120) || "Untitled";
       const category = (tile.category ?? "").trim().slice(0, 60);
+      const target = clampTarget(tile.target);
       if (tile.id && existingIds.has(tile.id)) {
         keptIds.add(tile.id);
         await supabase
           .from("tasks")
-          .update({ title, category, position: i })
+          .update({ title, category, position: i, target })
           .eq("id", tile.id);
       } else {
         await supabase
           .from("tasks")
-          .insert({ board_id: boardId, title, category, position: i });
+          .insert({ board_id: boardId, title, category, position: i, target });
       }
     }
 
@@ -105,11 +106,13 @@ export async function POST(request: Request) {
       tiles = (srcTasks ?? []) as Tile[];
     }
 
-    // Archive every currently-active board.
+    // Archive the currently-active team board (leave the flyer board alone —
+    // it runs on its own weekly cycle).
     await supabase
       .from("boards")
       .update({ is_active: false, archived_at: new Date().toISOString() })
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_flyer", false);
 
     const { data: newBoard, error } = await supabase
       .from("boards")
@@ -194,12 +197,64 @@ export async function POST(request: Request) {
     await supabase
       .from("boards")
       .update({ is_active: false, archived_at: new Date().toISOString() })
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_flyer", false);
     await supabase
       .from("boards")
       .update({ is_active: true, archived_at: null })
       .eq("id", boardId);
     return NextResponse.json({ ok: true });
+  }
+
+  // Create the weekly flyer board (once), pre-seeded with the four flyer tasks
+  // at 5-per-week. No-op-ish if one already exists — the editor won't offer this.
+  if (action === "create-flyer") {
+    const { data: existing } = await supabase
+      .from("boards")
+      .select("id")
+      .eq("is_flyer", true)
+      .maybeSingle();
+    if (existing) {
+      return NextResponse.json({ ok: true, boardId: existing.id });
+    }
+
+    const { data: newBoard, error } = await supabase
+      .from("boards")
+      .insert({
+        title: "Flyer Board",
+        subtitle: "This week",
+        accent_color: "#7c3aed",
+        columns: 4,
+        is_active: true,
+        is_flyer: true,
+        require_approval: false, // a volume/habit board — no per-upload review
+      })
+      .select()
+      .single();
+    if (error || !newBoard) {
+      return NextResponse.json(
+        { error: error?.message ?? "Could not create flyer board." },
+        { status: 500 },
+      );
+    }
+
+    const defaults = [
+      "Time lapse stretch",
+      "Pic collage of stretches",
+      "Video stunt mark through",
+      "Pyramid mark through",
+    ];
+    await supabase.from("tasks").insert(
+      defaults.map((title, i) => ({
+        board_id: newBoard.id,
+        title,
+        category: "",
+        position: i,
+        target: 5,
+      })),
+    );
+
+    return NextResponse.json({ ok: true, boardId: newBoard.id });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
@@ -208,6 +263,12 @@ export async function POST(request: Request) {
 function clampColumns(n: number): number {
   if (!Number.isFinite(n)) return 4;
   return Math.min(6, Math.max(1, Math.round(n)));
+}
+
+function clampTarget(n: unknown): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 1;
+  return Math.min(99, Math.max(1, Math.round(v)));
 }
 
 // Accept "YYYY-MM-DD" from a date input; anything else clears the deadline.

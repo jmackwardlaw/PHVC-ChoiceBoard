@@ -15,6 +15,7 @@ create table if not exists boards (
   accent_color text not null default '#E20706',
   columns      int  not null default 4,
   is_active    boolean not null default false,
+  is_flyer         boolean not null default false,    -- the weekly flyer board (can be active alongside the team board)
   due_date         date,                              -- optional deadline; board locks after this day
   show_leaderboard boolean not null default false,    -- show the team leaderboard to athletes
   require_approval boolean not null default true,     -- coach approves uploads (vs. auto-accept on submit)
@@ -26,6 +27,7 @@ create table if not exists boards (
 alter table boards add column if not exists due_date date;
 alter table boards add column if not exists show_leaderboard boolean not null default false;
 alter table boards add column if not exists require_approval boolean not null default true;
+alter table boards add column if not exists is_flyer boolean not null default false;
 
 -- Tiles on a board. "position" orders them left-to-right, top-to-bottom.
 create table if not exists tasks (
@@ -34,8 +36,13 @@ create table if not exists tasks (
   title      text not null,
   category   text not null default '',
   position   int  not null default 0,
+  target     int  not null default 1,   -- submissions needed to complete this tile (flyer tiles use 5)
   created_at timestamptz not null default now()
 );
+
+-- Added after the first release; safe to run on an existing database.
+alter table tasks    add column if not exists target int not null default 1;
+alter table athletes add column if not exists position_group text;
 
 -- The team roster. Athletes are shared across every board.
 create table if not exists athletes (

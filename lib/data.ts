@@ -7,6 +7,23 @@ export async function getActiveBoard(): Promise<Board | null> {
     .from("boards")
     .select("*")
     .eq("is_active", true)
+    .eq("is_flyer", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data as Board | null;
+}
+
+// The weekly flyer board. Runs alongside the team board (is_flyer distinguishes
+// the two), so it has its own is_active flag and lives forever — it resets by
+// week at read time, not by cloning a new board each month.
+export async function getFlyerBoard(): Promise<Board | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("boards")
+    .select("*")
+    .eq("is_active", true)
+    .eq("is_flyer", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -47,6 +64,17 @@ export async function getAthletes(activeOnly = false): Promise<Athlete[]> {
   let query = supabase.from("athletes").select("*").order("name");
   if (activeOnly) query = query.eq("active", true);
   const { data } = await query;
+  return (data ?? []) as Athlete[];
+}
+
+export async function getFlyers(): Promise<Athlete[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("athletes")
+    .select("*")
+    .eq("active", true)
+    .eq("position_group", "flyer")
+    .order("name");
   return (data ?? []) as Athlete[];
 }
 

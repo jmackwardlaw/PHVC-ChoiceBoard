@@ -226,6 +226,25 @@ function RosterRow({
         <span className="flex-1 font-medium">{athlete.name}</span>
       )}
 
+      <button
+        onClick={() =>
+          onCall({
+            action: "set-group",
+            id: athlete.id,
+            group: athlete.position_group === "flyer" ? "base" : "flyer",
+          })
+        }
+        disabled={busy}
+        title="Flyers also get the weekly flyer board"
+        className={`rounded-lg border px-2 py-1 text-xs font-semibold transition ${
+          athlete.position_group === "flyer"
+            ? "border-transparent bg-violet-600 text-white hover:bg-violet-700"
+            : "border-line text-muted hover:bg-canvas"
+        }`}
+      >
+        {athlete.position_group === "flyer" ? "★ Flyer" : "Flyer?"}
+      </button>
+
       {editing ? (
         <button
           onClick={async () => {

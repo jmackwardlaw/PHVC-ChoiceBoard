@@ -107,6 +107,11 @@ export default function AthleteBoard({
             total={tasks.length}
             onSwitch={signOutAthlete}
             onLeaderboard={board.show_leaderboard ? () => setShowLeaderboard(true) : undefined}
+            altBoard={
+              athlete.position_group === "flyer"
+                ? { href: "/flyer", label: "✦ Flyer board" }
+                : undefined
+            }
           />
 
           <main className="mx-auto max-w-5xl px-4 pb-24 pt-6">
@@ -214,16 +219,18 @@ export default function AthleteBoard({
 
 /* ───────────────────────── Name picker ───────────────────────── */
 
-function NamePicker({
+export function NamePicker({
   board,
   athletes,
   onPick,
   onAdded,
+  asFlyer = false,
 }: {
   board: Board;
   athletes: Athlete[];
   onPick: (a: Athlete) => void;
   onAdded: (a: Athlete) => void;
+  asFlyer?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
@@ -242,7 +249,7 @@ function NamePicker({
       const res = await fetch("/api/athletes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ name: newName, asFlyer }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Something went wrong.");
@@ -355,13 +362,14 @@ function NamePicker({
 
 /* ───────────────────────── Header ───────────────────────── */
 
-function Header({
+export function Header({
   board,
   athlete,
   doneCount,
   total,
   onSwitch,
   onLeaderboard,
+  altBoard,
 }: {
   board: Board;
   athlete: Athlete;
@@ -369,6 +377,7 @@ function Header({
   total: number;
   onSwitch: () => void;
   onLeaderboard?: () => void;
+  altBoard?: { href: string; label: string };
 }) {
   const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
   return (
@@ -404,6 +413,14 @@ function Header({
             Hi, {athlete.name.split(" ")[0]} 👋
           </p>
           <div className="flex items-center gap-2">
+            {altBoard && (
+              <a
+                href={altBoard.href}
+                className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold hover:bg-white/30"
+              >
+                {altBoard.label}
+              </a>
+            )}
             {onLeaderboard && (
               <button
                 onClick={onLeaderboard}
@@ -523,7 +540,7 @@ function Ring({ pct, label }: { pct: number; label: string }) {
 
 /* ───────────────────────── Upload sheet ───────────────────────── */
 
-function UploadSheet({
+export function UploadSheet({
   board,
   athlete,
   task,

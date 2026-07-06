@@ -6,7 +6,7 @@ import type { Board, Task } from "@/lib/types";
 import Modal from "../Modal";
 import { softBreak } from "../../softBreak";
 
-type Tile = { id?: string; title: string; category: string };
+type Tile = { id?: string; title: string; category: string; target: number };
 
 const PRESETS = ["#e20706", "#242424", "#2563eb", "#7c3aed", "#db2777", "#e11d48", "#ea580c", "#16a34a"];
 
@@ -14,12 +14,15 @@ export default function BoardEditor({
   board,
   tasks,
   allBoards,
+  variant = "team",
 }: {
   board: Board | null;
   tasks: Task[];
   allBoards: Board[];
+  variant?: "team" | "flyer";
 }) {
   const router = useRouter();
+  const isFlyer = variant === "flyer";
 
   const [title, setTitle] = useState(board?.title ?? "Conditioning Board");
   const [subtitle, setSubtitle] = useState(board?.subtitle ?? "");
@@ -29,7 +32,7 @@ export default function BoardEditor({
   const [showLeaderboard, setShowLeaderboard] = useState(board?.show_leaderboard ?? false);
   const [requireApproval, setRequireApproval] = useState(board?.require_approval ?? true);
   const [tiles, setTiles] = useState<Tile[]>(
-    tasks.map((t) => ({ id: t.id, title: t.title, category: t.category })),
+    tasks.map((t) => ({ id: t.id, title: t.title, category: t.category, target: t.target ?? 1 })),
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -50,13 +53,13 @@ export default function BoardEditor({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  const archived = allBoards.filter((b) => !b.is_active);
+  const archived = allBoards.filter((b) => !b.is_active && !b.is_flyer);
 
   function updateTile(i: number, patch: Partial<Tile>) {
     setTiles((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
   }
   function addTile() {
-    setTiles((prev) => [...prev, { title: "New task", category: "" }]);
+    setTiles((prev) => [...prev, { title: "New task", category: "", target: isFlyer ? 5 : 1 }]);
   }
   function removeTile(i: number) {
     setTiles((prev) => prev.filter((_, idx) => idx !== i));
@@ -254,30 +257,34 @@ export default function BoardEditor({
                 />
               </div>
             </Field>
-            <Field label="Due date (optional)">
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="input"
-              />
-              <p className="mt-1 text-xs text-muted">
-                Athletes see a countdown; uploads close the day after this date.
-              </p>
-            </Field>
-            <Field label="Team leaderboard">
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 py-2.5">
+            {!isFlyer && (
+              <Field label="Due date (optional)">
                 <input
-                  type="checkbox"
-                  checked={showLeaderboard}
-                  onChange={(e) => setShowLeaderboard(e.target.checked)}
-                  className="h-4 w-4"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="input"
                 />
-                <span className="text-sm font-medium">
-                  Show the leaderboard to athletes
-                </span>
-              </label>
-            </Field>
+                <p className="mt-1 text-xs text-muted">
+                  Athletes see a countdown; uploads close the day after this date.
+                </p>
+              </Field>
+            )}
+            {!isFlyer && (
+              <Field label="Team leaderboard">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={showLeaderboard}
+                    onChange={(e) => setShowLeaderboard(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm font-medium">
+                    Show the leaderboard to athletes
+                  </span>
+                </label>
+              </Field>
+            )}
             <Field label="Submission approval">
               <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3 py-2.5">
                 <input
@@ -312,6 +319,13 @@ export default function BoardEditor({
             </button>
           </div>
 
+          {isFlyer && (
+            <p className="mb-3 text-sm text-muted">
+              The <strong>/wk</strong> number is how many uploads a flyer needs each
+              week (Sun–Sat) to complete that tile. It resets every Sunday.
+            </p>
+          )}
+
           <div className="space-y-2">
             {tiles.map((tile, i) => (
               <div
@@ -331,6 +345,19 @@ export default function BoardEditor({
                   placeholder="Category"
                   className="input w-32"
                 />
+                {isFlyer && (
+                  <label className="flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted">
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={tile.target}
+                      onChange={(e) => updateTile(i, { target: Number(e.target.value) })}
+                      className="input w-14 text-center"
+                    />
+                    /wk
+                  </label>
+                )}
                 <div className="flex flex-col">
                   <button onClick={() => move(i, -1)} className="px-1 text-muted hover:text-ink">▲</button>
                   <button onClick={() => move(i, 1)} className="px-1 text-muted hover:text-ink">▼</button>
@@ -357,21 +384,23 @@ export default function BoardEditor({
           {saved && <span className="text-sm font-semibold text-emerald-600">Saved ✓</span>}
         </div>
 
-        <section className="rounded-2xl border border-line bg-surface p-5">
-          <h2 className="font-display text-xl font-extrabold">Start a new month</h2>
-          <p className="mt-1 mb-3 text-sm text-muted">
-            Copies these tiles into a brand-new board and archives the current one.
-            Past submissions stay saved with the old board.
-          </p>
-          <button
-            onClick={openNewBoard}
-            className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
-          >
-            Start new month →
-          </button>
-        </section>
+        {!isFlyer && (
+          <section className="rounded-2xl border border-line bg-surface p-5">
+            <h2 className="font-display text-xl font-extrabold">Start a new month</h2>
+            <p className="mt-1 mb-3 text-sm text-muted">
+              Copies these tiles into a brand-new board and archives the current one.
+              Past submissions stay saved with the old board.
+            </p>
+            <button
+              onClick={openNewBoard}
+              className="rounded-full border border-line px-4 py-2 font-semibold hover:bg-canvas"
+            >
+              Start new month →
+            </button>
+          </section>
+        )}
 
-        {archived.length > 0 && (
+        {!isFlyer && archived.length > 0 && (
           <section className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="font-display text-xl font-extrabold">Past boards</h2>
             <p className="mt-1 mb-3 text-sm text-muted">
