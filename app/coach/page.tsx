@@ -47,10 +47,16 @@ export default async function CoachHome({
     getSubmissionsForBoard(board.id),
   ]);
 
+  // The flyer board is only for flyers, so its stats should be out of the
+  // flyers — not the whole team. The team board uses everyone.
+  const roster = board.is_flyer
+    ? allAthletes.filter((a) => a.position_group === "flyer")
+    : allAthletes;
+
   // Show the current roster plus anyone who participated on this board, so
   // history stays complete even after an athlete is deactivated.
   const participated = new Set(submissions.map((s) => s.athlete_id));
-  const athletes = allAthletes.filter((a) => a.active || participated.has(a.id));
+  const athletes = roster.filter((a) => a.active || participated.has(a.id));
 
   return (
     <CoachShell email={coach.email} name={coach.user_metadata?.full_name ?? coach.user_metadata?.name}>

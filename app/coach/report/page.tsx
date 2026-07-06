@@ -42,8 +42,11 @@ export default async function ReportPage({
     getAllBoards(),
   ]);
 
+  const roster = board.is_flyer
+    ? allAthletes.filter((a) => a.position_group === "flyer")
+    : allAthletes;
   const participated = new Set(submissions.map((s) => s.athlete_id));
-  const athletes = allAthletes.filter((a) => a.active || participated.has(a.id));
+  const athletes = roster.filter((a) => a.active || participated.has(a.id));
 
   const latest = new Map<string, Submission>();
   for (const s of submissions) {

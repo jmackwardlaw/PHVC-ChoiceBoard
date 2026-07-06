@@ -119,7 +119,7 @@ export default function FlyerBoard({
                   {week.range}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
-                  Resets Sunday at midnight — a fresh board every week.
+                  This week&apos;s board closes Saturday night at 11:59pm.
                 </p>
               </div>
             </div>
@@ -166,22 +166,27 @@ export default function FlyerBoard({
                             key={task.id}
                             onClick={() => isNext && setActiveTask(task)}
                             disabled={!isNext}
-                            className={`flex flex-1 items-center gap-2 rounded-xl border p-2 text-left transition disabled:cursor-default ${
+                            className={`group/act flex flex-1 items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-200 disabled:cursor-default ${
                               filled
-                                ? "border-transparent bg-accent/10"
+                                ? "border-accent/20 bg-gradient-to-br from-accent/15 to-accent/5 shadow-sm"
                                 : isNext
-                                  ? "border-accent/50 hover:bg-canvas active:scale-[0.98]"
-                                  : "border-line opacity-45"
+                                  ? "border-accent/60 bg-surface shadow-card ring-1 ring-accent/10 hover:-translate-y-0.5 hover:border-accent hover:shadow-lift active:translate-y-0 active:scale-[0.98]"
+                                  : "border-dashed border-line bg-canvas/40 opacity-60"
                             }`}
                           >
                             <Circle filled={filled} active={isNext} />
                             <span
-                              className={`text-xs font-semibold leading-tight [overflow-wrap:anywhere] ${
-                                filled ? "text-accent" : "text-ink"
+                              className={`flex-1 text-xs font-semibold leading-tight [overflow-wrap:anywhere] transition-colors ${
+                                filled ? "text-accent" : isNext ? "text-ink" : "text-muted"
                               }`}
                             >
                               {task.title}
                             </span>
+                            {isNext && (
+                              <span className="shrink-0 text-accent opacity-0 transition-opacity group-hover/act:opacity-100">
+                                ↑
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -255,17 +260,22 @@ function target(t: Task): number {
 function Circle({ filled, active }: { filled: boolean; active: boolean }) {
   if (filled) {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_1px_4px_rgba(0,0,0,0.18)]">
         <CheckIcon />
       </span>
     );
   }
   return (
-    <span
-      className={`h-5 w-5 shrink-0 rounded-full border-2 ${
-        active ? "border-accent" : "border-line"
-      }`}
-    />
+    <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+      {active && (
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/25" />
+      )}
+      <span
+        className={`h-5 w-5 rounded-full border-2 ${
+          active ? "border-accent" : "border-line"
+        }`}
+      />
+    </span>
   );
 }
 

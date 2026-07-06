@@ -62,9 +62,12 @@ export async function GET(request: Request) {
   ]);
 
   // Same athlete set the dashboard shows: current roster plus anyone who
-  // participated on this board.
+  // participated on this board. The flyer board is scoped to flyers only.
+  const roster = board.is_flyer
+    ? allAthletes.filter((a) => a.position_group === "flyer")
+    : allAthletes;
   const participated = new Set(submissions.map((s) => s.athlete_id));
-  const athletes = allAthletes.filter((a) => a.active || participated.has(a.id));
+  const athletes = roster.filter((a) => a.active || participated.has(a.id));
 
   const slug = slugify(board.subtitle || board.title);
 
