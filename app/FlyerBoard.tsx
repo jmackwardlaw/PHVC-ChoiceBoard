@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Athlete, Board, Submission, Task } from "@/lib/types";
-import { softBreak } from "./softBreak";
 import { Header, NamePicker, UploadSheet } from "./AthleteBoard";
 
 // Shares the athlete localStorage key with the team board, so a flyer who
@@ -25,10 +24,15 @@ export default function FlyerBoard({
 }) {
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const week = useMemo(() => currentWeek(), []);
+  // One day column per weekly rep (all tasks use the same target of 5, but be
+  // safe if a coach sets different targets — take the largest).
+  const dayCount = useMemo(
+    () => (tasks.length ? Math.max(...tasks.map(target)) : 5),
+    [tasks],
+  );
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -46,23 +50,18 @@ export default function FlyerBoard({
   }, []);
 
   async function loadCounts(athleteId: string) {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/submissions?board=${board.id}&athlete=${athleteId}`,
-      );
-      const json = await res.json();
-      const map: Record<string, number> = {};
-      for (const s of (json.submissions ?? []) as Submission[]) {
-        // Only this week's uploads count; a redo doesn't.
-        if (s.status === "redo") continue;
-        if (new Date(s.created_at).getTime() < week.start) continue;
-        map[s.task_id] = (map[s.task_id] ?? 0) + 1;
-      }
-      setCounts(map);
-    } finally {
-      setLoading(false);
+    const res = await fetch(
+      `/api/submissions?board=${board.id}&athlete=${athleteId}`,
+    );
+    const json = await res.json();
+    const map: Record<string, number> = {};
+    for (const s of (json.submissions ?? []) as Submission[]) {
+      // Only this week's uploads count; a redo doesn't.
+      if (s.status === "redo") continue;
+      if (new Date(s.created_at).getTime() < week.start) continue;
+      map[s.task_id] = (map[s.task_id] ?? 0) + 1;
     }
+    setCounts(map);
   }
 
   function chooseAthlete(a: Athlete) {
@@ -120,57 +119,80 @@ export default function FlyerBoard({
               </div>
             )}
 
-            <div className="board-grid gap-3" style={{ ["--cols" as string]: board.columns }}>
-              {tasks.map((task, i) => {
-                const goal = target(task);
-                const count = Math.min(counts[task.id] ?? 0, goal);
-                const done = count >= goal;
-                return (
-                  <button
-                    key={task.id}
-                    onClick={() => !done && setActiveTask(task)}
-                    disabled={done}
-                    style={{ ["--i" as string]: i }}
-                    className={`reveal group relative flex min-h-[150px] flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border p-4 text-center transition active:scale-[0.98] disabled:cursor-default ${
-                      done
-                        ? "tile-done border-transparent text-white shadow-lift"
-                        : "tile border-line shadow-card hover:-translate-y-1 hover:border-accent hover:shadow-lift"
-                    }`}
-                  >
-                    <span
-                      className={`font-race text-2xl uppercase leading-none tracking-wide [overflow-wrap:anywhere] ${
-                        done ? "text-white" : "text-accent"
-                      }`}
-                    >
-                      {softBreak(task.title)}
-                    </span>
+            {/* Day columns (one per weekly rep) + a weekly-progress column.
+                A circle fills left-to-right as uploads come in; only the next
+                open circle in each activity is tappable, so days fill in order. */}
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {Array.from({ length: dayCount }).map((_, d) => (
+                <div
+                  key={d}
+                  className="flex min-w-[150px] flex-1 flex-col gap-2 rounded-2xl border border-line bg-surface p-3 shadow-card"
+                >
+                  <p className="text-center font-race text-lg uppercase tracking-wide text-accent">
+                    Day {d + 1}
+                  </p>
+                  {tasks.map((task) => {
+                    const goal = target(task);
+                    const c = counts[task.id] ?? 0;
+                    const filled = c > d;
+                    const isNext = c === d && d < goal;
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => isNext && setActiveTask(task)}
+                        disabled={!isNext}
+                        className={`flex items-center gap-2 rounded-xl border p-2 text-left transition disabled:cursor-default ${
+                          filled
+                            ? "border-transparent bg-accent/10"
+                            : isNext
+                              ? "border-accent/50 hover:bg-canvas active:scale-[0.98]"
+                              : "border-line opacity-45"
+                        }`}
+                      >
+                        <Circle filled={filled} active={isNext} />
+                        <span
+                          className={`text-xs font-semibold leading-tight [overflow-wrap:anywhere] ${
+                            filled ? "text-accent" : "text-ink"
+                          }`}
+                        >
+                          {task.title}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
 
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                        done
-                          ? "bg-white/20 text-white"
-                          : "border border-accent/40 text-accent transition group-hover:bg-accent group-hover:text-white"
-                      }`}
-                    >
-                      {done ? (
-                        <>
-                          <CheckIcon /> {goal}/{goal} done
-                        </>
-                      ) : loading ? (
-                        "…"
-                      ) : (
-                        <>
-                          {count}/{goal} — upload ↑
-                        </>
-                      )}
-                    </span>
-
-                    {!done && (
-                      <ProgressDots count={count} goal={goal} />
-                    )}
-                  </button>
-                );
-              })}
+              {/* Weekly progress tracker */}
+              <div className="flex min-w-[180px] flex-col gap-2 rounded-2xl border-2 border-accent/30 bg-accent/5 p-3">
+                <p className="text-center font-race text-lg uppercase tracking-wide text-accent">
+                  This week
+                </p>
+                {tasks.map((task) => {
+                  const goal = target(task);
+                  const c = Math.min(counts[task.id] ?? 0, goal);
+                  const done = c >= goal;
+                  return (
+                    <div key={task.id} className="rounded-xl bg-surface p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-semibold leading-tight [overflow-wrap:anywhere]">
+                          {task.title}
+                        </span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold tabular-nums text-accent">
+                          {done && <CheckIcon />}
+                          {c}/{goal}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-canvas">
+                        <div
+                          className="h-full rounded-full bg-accent transition-all"
+                          style={{ width: `${goal ? (c / goal) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </main>
         </>
@@ -199,16 +221,20 @@ function target(t: Task): number {
   return t.target && t.target > 0 ? t.target : 1;
 }
 
-function ProgressDots({ count, goal }: { count: number; goal: number }) {
+function Circle({ filled, active }: { filled: boolean; active: boolean }) {
+  if (filled) {
+    return (
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-white">
+        <CheckIcon />
+      </span>
+    );
+  }
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1">
-      {Array.from({ length: goal }).map((_, i) => (
-        <span
-          key={i}
-          className={`h-2 w-2 rounded-full ${i < count ? "bg-accent" : "bg-line"}`}
-        />
-      ))}
-    </div>
+    <span
+      className={`h-5 w-5 shrink-0 rounded-full border-2 ${
+        active ? "border-accent" : "border-line"
+      }`}
+    />
   );
 }
 
